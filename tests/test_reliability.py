@@ -214,7 +214,15 @@ def test_claude_bookkeeping_and_tools_are_not_user_messages():
     assert text.count('请修复启动失败') == 1
     assert 'opaque-signature' not in text and 'dequeue' not in text
     assert '工具返回（不是用户发言）' in text and '启动验证通过' in text
-    assert 'navigation-only-marker' not in text and 'ls -la' not in text
+    # Read results remain bounded evidence for the model, with their tool role
+    # preserved even when Claude's transport wraps them in a user message.
+    navigation = [event for row in material for event in row['message_layout']
+                  if 'navigation-only-marker' in '\n'.join(
+                      row['text'].splitlines()[event['start_line'] - 1:event['end_line']])]
+    assert len(navigation) == 1
+    assert navigation[0]['role'] == 'tool' and navigation[0]['event_kind'] == 'tool_result'
+    assert navigation[0]['tool_purpose'] == 'read'
+    assert 'ls -la' not in text  # Command arguments stay in the raw audit.
     assert 'opaque-signature' in json.dumps(material, ensure_ascii=False)  # Raw audit survives.
 
 
