@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: memu-core
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: {app: memu-core}
+  template:
+    metadata:
+      labels: {app: memu-core}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 900
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      initContainers:
+        - name: initialize
+          image: memulife-core:1.3.0
+          args: [init]
+          envFrom:
+            - configMapRef: {name: memu-core-config}
+            - secretRef: {name: memu-core-secrets}
+          volumeMounts:
+            - {name: data, mountPath: /data}
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: '1', memory: 256Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+      containers:
+        - name: core
+          image: memulife-core:1.3.0
+          args: [core]
+          ports:
+            - {name: http, containerPort: 5072}
+          envFrom:
+            - configMapRef: {name: memu-core-config}
+            - secretRef: {name: memu-auth}
+            - secretRef: {name: memu-core-secrets}
+          volumeMounts:
+            - {name: data, mountPath: /data}
+            - {name: temporary, mountPath: /tmp}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: '2', memory: 3Gi}
+          startupProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 10
+            failureThreshold: 90
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 150
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet: {path: /readyz, port: http}
+            periodSeconds: 150
+            timeoutSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+      volumes:
+        - name: data
+          persistentVolumeClaim: {claimName: memu-data}
+        - name: temporary
+          emptyDir: {sizeLimit: 256Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: memu-core
+spec:
+  selector: {app: memu-core}
+  ports:
+    - {name: http, port: 5072, targetPort: http}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: core-from-mcp
+spec:
+  podSelector:
+    matchLabels: {app: memu-core}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {app: memu-mcp}
+        - podSelector:
+            matchLabels: {app: memu-acquisition}
+      ports:
+        - {protocol: TCP, port: 5072}

@@ -1,0 +1,22 @@
+[Unit]
+Description=MemULife core TCP bridge bound to Tailscale
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/memu/core-tailnet.env
+ExecStart=/usr/bin/socat -T 930 TCP4-LISTEN:15072,bind=${MEMU_TAILNET_BIND},reuseaddr,fork,range=${MEMU_FRONTEND_TAILNET_IP}/32,max-children=32 TCP4:127.0.0.1:5072,connect-timeout=5
+Restart=on-failure
+RestartSec=150s
+TimeoutStopSec=15s
+KillMode=control-group
+NoNewPrivileges=true
+MemoryMax=64M
+MemorySwapMax=0
+CPUQuota=5%
+TasksMax=64
+UMask=0077
+
+[Install]
+WantedBy=default.target

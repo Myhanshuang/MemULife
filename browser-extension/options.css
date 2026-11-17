@@ -1,0 +1,5 @@
+.connector-home { max-width: 740px; margin: 48px auto; padding: 0 24px; }
+.connector-home h1 { font-size: 24px; margin: 0 0 8px; }
+.connector-home .setup-description { margin-bottom: 28px; }
+.connector-link { color: var(--color-accent); font-weight: 600; white-space: nowrap; }
+@media(max-width: 600px) { .connector-home { margin: 24px auto; padding: 0 16px; } .connector-home h1 { font-size: 21px; } }

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "MemULife": {
+      "url": "http://127.0.0.1:5071/mcp",
+      "headers": {"Authorization": "Bearer REPLACE_WITH_AGENT1_TOKEN_FROM_LOCAL_ENV"}
+    }
+  }
+}

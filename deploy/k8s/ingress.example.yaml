@@ -1,0 +1,27 @@
+# Optional. Replace the host and TLS secret, and include the host in MEMU_MCP_ALLOWED_HOSTS.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: memu-mcp
+  namespace: memu
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: [memory.example.com]
+      secretName: memu-tls
+  rules:
+    - host: memory.example.com
+      http:
+        paths:
+          - path: /v1/memory/write
+            pathType: Exact
+            backend:
+              service:
+                name: memu-mcp
+                port: {number: 5071}
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: memu-mcp
+                port: {number: 5071}

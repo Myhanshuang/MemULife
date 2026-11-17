@@ -1,0 +1,11 @@
+{
+  "name": "memulife-import-ui-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test --test-isolation=none --test-concurrency=1 imports.test.mjs state.test.mjs real-service.test.mjs extension.test.mjs extension-live.test.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
+}

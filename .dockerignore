@@ -1,0 +1,12 @@
+*
+!Dockerfile
+!pyproject.toml
+!memu/
+!memu/**
+!ops/
+!ops/requirements-embedding.txt
+**/__pycache__
+**/*.pyc
+**/.idea
+**/.pytest_cache
+**/.ruff_cache

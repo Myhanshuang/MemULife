@@ -1,0 +1,20 @@
+{
+  "name": "@memulife/browser-adapters",
+  "version": "0.6.1",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.11.0"
+  },
+  "scripts": {
+    "roundtrip": "node tools/roundtrip.ts",
+    "build": "node tools/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc --noEmit && node tools/build.mjs && node --test --test-isolation=none tests/*.test.mjs"
+  },
+  "devDependencies": {
+    "@types/chrome": "0.3.6",
+    "fake-indexeddb": "6.2.6",
+    "typescript": "7.0.2"
+  }
+}

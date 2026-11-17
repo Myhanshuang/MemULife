@@ -1,0 +1,24 @@
+/* Shared workspace frame for standalone and management pages. */
+.icon { display: inline-block; flex: 0 0 auto; width: 20px; height: 20px; vertical-align: middle; }
+.app-header { max-width: var(--container); margin-inline: auto; min-height: 72px; padding: 12px var(--gutter); display: flex; align-items: center; gap: 40px; border-bottom: 1px solid var(--color-rule); background: #f4f5f8e6; }
+.app-header a { color: inherit; text-decoration: none; }
+.app-header .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 650; font-size: 19px; letter-spacing: -.6px; }
+.brand-mark { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; color: white; border-radius: 10px; background: linear-gradient(150deg, #6087ef, #315fdd); box-shadow: inset 0 1px 1px #ffffff60, 0 3px 6px #315fdd20; }
+.brand-mark .icon { width: 22px; height: 22px; }
+.app-header nav { display: flex; align-items: center; gap: 8px; flex: 1; margin: 0; }
+.app-header nav a { color: var(--color-muted); padding: 8px 12px; border-radius: 8px; }
+.app-header nav a:hover { color: var(--color-ink); }
+.app-header nav [aria-current] { color: var(--color-ink); background: #fff; box-shadow: var(--shadow-control); }
+.app-header .workspace-title { color: var(--color-muted); flex: 1; font-size: 14px; }
+.app-header #logout { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; background: transparent; border-color: transparent; color: var(--color-muted); box-shadow: none; }
+.app-header #logout .icon { width: 16px; height: 16px; }
+.app-header #logout:hover { color: var(--color-ink); background: white; }
+@media (max-width: 900px) {
+  .app-header { gap: 16px; }
+  .app-header nav { gap: 4px; }
+  .app-header nav a { padding-inline: 8px; }
+}
+@media (max-width: 600px) {
+  .app-header { flex-wrap: wrap; padding-block: 14px; gap: 12px; }
+  .app-header nav, .app-header .workspace-title { order: 3; flex-basis: 100%; }
+}

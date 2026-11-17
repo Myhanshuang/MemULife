@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "memulife"
+version = "1.3.0"
+description = "File-first, evidence-linked event memory service"
+requires-python = ">=3.11"
+dependencies = ["pydantic>=2.8,<3", "httpx>=0.27,<1", "python-dotenv>=0.21,<2"]
+
+[project.optional-dependencies]
+acquisition = ["jsonschema>=4.26,<5", "zstandard>=0.25,<1", "websockets>=15,<16", "markdown-it-py>=3,<5",
+               "Pillow>=10,<13", "cryptography>=42,<47"]
+postgres = ["psycopg[binary]>=3.2,<4"]
+test = ["pytest>=8,<10", "ruff>=0.9,<1"]
+
+[project.scripts]
+memulife = "memu.cli:main"
+memu = "memu.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["memu*"]
+
+[tool.setuptools.package-data]
+memu = ["tasks/prompts/*.md", "sql/*.sql", "acquisition/spec/*.json",
+        "acquisition/ui/*.html", "acquisition/ui/*.js", "acquisition/ui/*.css", "acquisition/ui/pages/*.js"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+
+[tool.ruff.lint]
+select = ["E9", "F63", "F7", "F82", "F401"]

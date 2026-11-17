@@ -1,0 +1,9 @@
+{
+  "adapter_id": "ai.local-logs",
+  "source_profile": "codex",
+  "source_instance_id": "example-selected-codex-source",
+  "source_namespace": "codex:explicit-account",
+  "config": {
+    "root": "/absolute/path/to/authorized/logs"
+  }
+}

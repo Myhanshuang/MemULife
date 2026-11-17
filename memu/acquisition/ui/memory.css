@@ -1,0 +1,73 @@
+.memory-app .memory-page-header { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 450px) auto; align-items: start; gap: 24px; }
+.memory-heading-main { display: grid; gap: 24px; min-width: 0; }
+.memory-heading-main .filter-tabs:empty { display: none; }
+.memory-search { width: min(100%, 450px); display: grid; gap: 6px; }
+.memory-search-row { display: flex; gap: 8px; }
+.memory-search-row > input { flex: 1; }
+.memory-search-row > button { flex-shrink: 0; }
+.memory-search-scopes { border: 0; padding: 0; margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; }
+.memory-search-scopes legend { float: left; padding: 7px 0; margin-right: 12px; font-size: 12px; color: var(--color-muted); }
+.memory-search-scopes label { display: inline-flex; align-items: center; font-size: 12px; cursor: pointer; }
+.memory-search-scopes input { margin: 4px; }
+.memory-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; padding: 18px; border: 1px solid var(--color-rule); border-radius: 12px; background: white; margin: 16px 0 10px; }
+.memory-filters .field { flex: 1 1 145px; }
+.memory-records { columns: 2; column-gap: 16px; margin: 20px 0; }
+.memory-records > .skeleton, .memory-records > .region-state { column-span: all; }
+.memory-card { display: block; width: 100%; min-width: 0; break-inside: avoid; margin: 0 0 16px; }
+.memory-card > h2 { font-size: 16px; line-height: 1.5; margin: 16px 0 12px; overflow-wrap: anywhere; }
+.memory-card .topic-heading h2 { font-size: 15px; }
+.memory-record-meta { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 12px; color: var(--color-muted); margin: 14px 0; overflow-wrap: anywhere; }
+.memory-card .memory-preview { margin: 16px 0; }
+.memory-card-date { margin-left: auto; font-size: 12px; color: var(--color-muted); }
+.memory-card-actions { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.memory-card-actions .danger, .danger { color: #bd3548; }
+.memory-protected { color: var(--color-accent); background: var(--color-accent-wash); }
+.memory-edit-dialog textarea { width: 100%; resize: vertical; min-height: 260px; font: inherit; font-size: var(--text-sm); line-height: 1.8; padding: 12px; border: 1px solid var(--color-rule-2); border-radius: var(--radius-input); background: var(--color-key-face); color: var(--color-ink); }
+.memory-edit-dialog .memory-detail-body { display: grid; gap: 16px; }
+.memory-edit-status:empty { display: none; }
+.memory-edit-status p { margin: 0 0 8px; }
+.danger-button { color: white; background: #bd3548; border-color: #bd3548; }
+.memory-delete-dialog { width: min(530px, calc(100% - 32px)); }
+.memory-delete-dialog p { line-height: 1.7; }
+.memory-delete-excerpt { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--color-paper); padding: 14px; border-radius: 10px; }
+.memory-conversation { display: grid; gap: 16px; margin: 18px 0; }
+.memory-message { min-width: 0; border: 1px solid var(--color-rule); border-radius: 14px; padding: 14px 16px; background: var(--color-paper); }
+.memory-message[data-role=user] { margin-left: 10%; background: var(--color-accent-wash); border-color: transparent; }
+.memory-message[data-role=assistant], .memory-message[data-role=speaker] { margin-right: 6%; }
+.memory-message-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; font-size: 12px; color: var(--color-muted); margin-bottom: 8px; }
+.memory-message-heading time { font-size: 11px; }
+.memory-message-body { font-size: 13px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
+.memory-dialog { width: min(880px, calc(100% - 32px)); max-height: 88dvh; padding: 0; border: 1px solid var(--color-rule); border-radius: var(--radius-card); background: white; color: var(--color-ink); box-shadow: 0 24px 80px #23325235; }
+.memory-dialog::backdrop { background: #20283866; }
+.memory-dialog-heading { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; background: white; border-bottom: 1px solid var(--color-rule); }
+.memory-dialog-heading h2 { font-size: 18px; }
+.memory-detail-body { padding: 24px; }
+.memory-full-text { font: inherit; font-size: 13px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; margin: 18px 0; background: var(--color-paper); border-radius: 10px; padding: 18px; }
+.memory-evidence { display: flex; flex-wrap: wrap; gap: 8px; }
+.memory-media-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 12px; margin: 16px 0; }
+.memory-media { min-width: 0; margin: 0; padding: 14px; border: 1px solid var(--color-rule); border-radius: 12px; background: var(--color-paper); display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.memory-media figcaption { display: grid; gap: 4px; font-size: 13px; overflow-wrap: anywhere; }
+.memory-media-view { width: 100%; }
+.memory-media-view:empty, .memory-media p:empty, .memory-media-actions:empty { display: none; }
+.memory-media img, .memory-media video { display: block; width: 100%; max-height: 340px; object-fit: contain; border-radius: 8px; background: white; }
+.memory-card .memory-media img { max-height: 190px; }
+.memory-media audio { width: 100%; }
+.memory-media p { margin: 0; font-size: 12px; overflow-wrap: anywhere; }
+.memory-media-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: auto; font-size: 13px; }
+@container (max-width: 800px) {
+  .memory-app .memory-page-header { grid-template-columns: minmax(0, 1fr) auto; gap: 16px; }
+  .memory-page-header > .memory-search { grid-column: 1 / -1; grid-row: 2; justify-self: end; }
+  .memory-page-header > :last-child { grid-column: 2; grid-row: 1; }
+}
+@container (max-width: 580px) {
+  .memory-records { columns: 1; }
+  .memory-search { width: 100%; }
+  .memory-filters { padding: 12px; gap: 10px; }
+  .memory-card { padding: 18px; }
+  .memory-card .topic-heading { gap: 8px; }
+  .memory-card .topic-heading h2 { flex-basis: 55%; }
+}
+@media (max-width: 600px) {
+  .memory-detail-body { padding: 16px; }
+  .memory-dialog-heading { padding: 12px 16px; }
+}

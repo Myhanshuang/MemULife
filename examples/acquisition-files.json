@@ -1,0 +1,6 @@
+{
+  "adapter_id": "filesystem.typora",
+  "source_profile": "linux-markdown-v1",
+  "source_namespace": "notes:explicit-directory",
+  "config": {"root": "/absolute/path/to/authorized/notes"}
+}

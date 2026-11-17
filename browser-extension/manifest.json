@@ -1,0 +1,53 @@
+{
+  "manifest_version": 3,
+  "name": "MemULife · 浏览器连接器",
+  "description": "为本机 MemULife 网页提供经授权的 AI 会话读取。",
+  "version": "0.6.1",
+  "minimum_chrome_version": "131",
+  "permissions": [
+    "alarms",
+    "storage",
+    "nativeMessaging",
+    "scripting"
+  ],
+  "optional_permissions": [
+    "cookies"
+  ],
+  "optional_host_permissions": [
+    "https://chatgpt.com/*",
+    "https://claude.ai/*",
+    "https://gemini.google.com/*",
+    "https://www.perplexity.ai/*",
+    "https://chat.deepseek.com/*",
+    "https://grok.com/*",
+    "http://127.0.0.1/*",
+    "http://localhost/*"
+  ],
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "options_page": "options.html",
+  "action": {
+    "default_title": "打开 MemULife 来源管理"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'"
+  },
+  "host_permissions": [
+    "http://127.0.0.1/*",
+    "http://localhost/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "http://127.0.0.1/*",
+        "http://localhost/*"
+      ],
+      "js": [
+        "src/connector.js"
+      ],
+      "run_at": "document_start"
+    }
+  ]
+}

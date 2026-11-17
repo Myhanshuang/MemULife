@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: memu-core
+spec:
+  template:
+    spec:
+      containers:
+        - name: core
+          env:
+            - {name: EMB_BACKEND, value: local_gemma}
+            - {name: EMB_MODEL_PATH, value: /models/embeddinggemma-2}
+          volumeMounts:
+            - {name: models, mountPath: /models, readOnly: true}
+          resources:
+            requests: {cpu: 100m, memory: 2500Mi}
+      volumes:
+        - name: models
+          persistentVolumeClaim: {claimName: memu-models}

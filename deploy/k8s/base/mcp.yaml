@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: memu-mcp
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: memu-mcp}
+  template:
+    metadata:
+      labels: {app: memu-mcp}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 15
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+      containers:
+        - name: mcp
+          image: memulife-mcp:1.3.0
+          args: [mcp]
+          ports:
+            - {name: http, containerPort: 5071}
+          envFrom:
+            - configMapRef: {name: memu-mcp-config}
+            - secretRef: {name: memu-auth}
+          resources:
+            requests: {cpu: 25m, memory: 48Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          startupProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 5
+            failureThreshold: 12
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 150
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet: {path: /readyz, port: http}
+            periodSeconds: 150
+            timeoutSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: memu-mcp
+spec:
+  selector: {app: memu-mcp}
+  ports:
+    - {name: http, port: 5071, targetPort: http}

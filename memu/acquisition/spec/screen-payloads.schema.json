@@ -1,0 +1,790 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:personal-memory:v1:ScreenPayload",
+  "title": "屏幕帧/片段/观察/升级分析内容",
+  "$ref": "#/$defs/ScreenPayload",
+  "$defs": {
+    "BlobRef": {
+      "type": "object",
+      "properties": {
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "media_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "sha256",
+        "media_type",
+        "size_bytes"
+      ],
+      "additionalProperties": false
+    },
+    "Confidence": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "calibration_version": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "value",
+        "calibration_version"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "value": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "value"
+            ]
+          },
+          "then": {
+            "properties": {
+              "calibration_version": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "CaptureFrame": {
+      "type": "object",
+      "properties": {
+        "frame_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "capture_session_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "stream_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "frame_seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "monotonic_ns": {
+          "type": "string",
+          "pattern": "^[0-9]{1,20}$",
+          "description": "纳秒十进制字符串，内部按无符号64位整数处理"
+        },
+        "captured_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "rotation": {
+          "type": "integer",
+          "enum": [
+            0,
+            90,
+            180,
+            270
+          ]
+        },
+        "scale_factor": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "color_space": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pixel_format": {
+          "type": "string",
+          "minLength": 1
+        },
+        "active_window_ref": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "accessibility_snapshot_ref": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "video_chunk_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pts_us": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "image_blob_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BlobRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "capture_quality": {
+          "type": "string",
+          "enum": [
+            "native",
+            "scaled",
+            "recovered"
+          ]
+        }
+      },
+      "required": [
+        "frame_id",
+        "capture_session_id",
+        "stream_id",
+        "frame_seq",
+        "monotonic_ns",
+        "captured_at",
+        "width",
+        "height",
+        "rotation",
+        "scale_factor",
+        "color_space",
+        "pixel_format",
+        "active_window_ref",
+        "accessibility_snapshot_ref",
+        "video_chunk_ref",
+        "pts_us",
+        "image_blob_ref",
+        "capture_quality"
+      ],
+      "additionalProperties": false
+    },
+    "VideoChunk": {
+      "type": "object",
+      "properties": {
+        "chunk_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "device_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "capture_session_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "stream_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "start_monotonic_ns": {
+          "type": "string",
+          "pattern": "^[0-9]{1,20}$",
+          "description": "纳秒十进制字符串，内部按无符号64位整数处理"
+        },
+        "end_monotonic_ns": {
+          "type": "string",
+          "pattern": "^[0-9]{1,20}$",
+          "description": "纳秒十进制字符串，内部按无符号64位整数处理"
+        },
+        "first_frame_seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "last_frame_seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "sealed",
+            "recovered_partial"
+          ]
+        },
+        "container": {
+          "type": "string",
+          "enum": [
+            "fragmented_mp4",
+            "matroska"
+          ]
+        },
+        "codec": {
+          "type": "string",
+          "minLength": 1
+        },
+        "blob_ref": {
+          "$ref": "#/$defs/BlobRef"
+        },
+        "manifest_ref": {
+          "$ref": "#/$defs/BlobRef"
+        },
+        "recorded_frame_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dropped_frame_ranges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "first_seq": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "last_seq": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "first_seq",
+              "last_seq",
+              "reason"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        },
+        "source_dimensions": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "encoded_dimensions": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      },
+      "required": [
+        "chunk_id",
+        "device_id",
+        "capture_session_id",
+        "stream_id",
+        "start_monotonic_ns",
+        "end_monotonic_ns",
+        "first_frame_seq",
+        "last_frame_seq",
+        "state",
+        "container",
+        "codec",
+        "blob_ref",
+        "manifest_ref",
+        "recorded_frame_count",
+        "dropped_frame_ranges",
+        "source_dimensions",
+        "encoded_dimensions"
+      ],
+      "additionalProperties": false
+    },
+    "ScreenEvidence": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "frame_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bbox": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              ],
+              "items": false,
+              "minItems": 4,
+              "maxItems": 4
+            },
+            "kind": {
+              "const": "visual_region"
+            }
+          },
+          "required": [
+            "frame_id",
+            "bbox",
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "snapshot_ref": {
+              "type": "string",
+              "minLength": 1
+            },
+            "node_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1
+            },
+            "kind": {
+              "const": "accessibility_text"
+            }
+          },
+          "required": [
+            "snapshot_ref",
+            "node_ids",
+            "kind"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ScreenObservation": {
+      "type": "object",
+      "properties": {
+        "observation_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "episode_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "accepted",
+            "superseded",
+            "cancelled"
+          ]
+        },
+        "observation_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "time_range": {
+          "type": "object",
+          "properties": {
+            "start": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "end": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "required": [
+            "start",
+            "end"
+          ],
+          "additionalProperties": false
+        },
+        "statement": {
+          "type": "string",
+          "minLength": 1
+        },
+        "actor": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "local_user",
+                "other",
+                "unknown"
+              ]
+            },
+            "identity_source": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "kind",
+            "identity_source"
+          ],
+          "additionalProperties": false
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ScreenEvidence"
+          },
+          "minItems": 1
+        },
+        "source_object_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        },
+        "evidence_class": {
+          "type": "string",
+          "enum": [
+            "visual_inference",
+            "accessibility_text",
+            "source_confirmed"
+          ]
+        },
+        "model_score": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "confidence": {
+          "$ref": "#/$defs/Confidence"
+        },
+        "producer": {
+          "type": "object",
+          "properties": {
+            "role": {
+              "type": "string",
+              "enum": [
+                "fast_vlm",
+                "high_vlm",
+                "accessibility_parser"
+              ]
+            },
+            "model_profile": {
+              "type": "string",
+              "minLength": 1
+            },
+            "prompt_version": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "role",
+            "model_profile",
+            "prompt_version"
+          ],
+          "additionalProperties": false
+        },
+        "tool_receipt_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "minItems": 0
+        },
+        "coverage": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "observed_frames"
+              ]
+            },
+            "sample_fps": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "kind",
+            "sample_fps"
+          ],
+          "additionalProperties": false
+        },
+        "supersedes": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "observation_id",
+        "episode_id",
+        "revision",
+        "status",
+        "observation_type",
+        "time_range",
+        "statement",
+        "actor",
+        "evidence",
+        "source_object_refs",
+        "evidence_class",
+        "model_score",
+        "confidence",
+        "producer",
+        "tool_receipt_ids",
+        "coverage",
+        "supersedes"
+      ],
+      "additionalProperties": false
+    },
+    "EpisodeAnalysis": {
+      "type": "object",
+      "properties": {
+        "episode_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "episode_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "observations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "statement": {
+                "type": "string",
+                "minLength": 1
+              },
+              "evidence_refs": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "minItems": 1
+              },
+              "evidence_class": {
+                "type": "string",
+                "enum": [
+                  "visual_inference",
+                  "accessibility_text",
+                  "source_confirmed"
+                ]
+              }
+            },
+            "required": [
+              "statement",
+              "evidence_refs",
+              "evidence_class"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        },
+        "source_links": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source_object_ref": {
+                "type": "string",
+                "minLength": 1
+              },
+              "relation": {
+                "type": "string",
+                "enum": [
+                  "visible_object",
+                  "supports",
+                  "overlaps"
+                ]
+              },
+              "evidence_refs": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "minItems": 1
+              }
+            },
+            "required": [
+              "source_object_ref",
+              "relation",
+              "evidence_refs"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        },
+        "unresolved": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "question": {
+                "type": "string",
+                "minLength": 1
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "question",
+              "reason"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        },
+        "retention_requests": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "evidence_ref": {
+                "type": "string",
+                "minLength": 1
+              },
+              "range_us": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "evidence_ref",
+              "range_us",
+              "reason"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        },
+        "supersedes_observation_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "episode_id",
+        "episode_revision",
+        "observations",
+        "source_links",
+        "unresolved",
+        "retention_requests",
+        "supersedes_observation_ids"
+      ],
+      "additionalProperties": false
+    },
+    "ScreenPayload": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/CaptureFrame"
+        },
+        {
+          "$ref": "#/$defs/VideoChunk"
+        },
+        {
+          "$ref": "#/$defs/ScreenObservation"
+        },
+        {
+          "$ref": "#/$defs/EpisodeAnalysis"
+        }
+      ]
+    }
+  }
+}

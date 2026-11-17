@@ -1,0 +1,26 @@
+{
+	admin off
+	email {$ACME_EMAIL}
+}
+
+{$MEMU_PUBLIC_HOST} {
+	# Authenticated agent and raw-material ingress. Health probes bypass Caddy.
+	@mcp path /mcp /v1/memory/write
+	handle @mcp {
+		reverse_proxy 127.0.0.1:5071 {
+			# Preserve Host, Origin, Authorization and MCP protocol headers.
+			# A failed write must never be replayed by the proxy.
+			lb_retries 0
+			lb_try_duration 0
+			transport http {
+				dial_timeout 5s
+				response_header_timeout 900s
+				read_timeout 900s
+				write_timeout 900s
+			}
+		}
+	}
+	handle {
+		respond 404
+	}
+}

@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:personal-memory:v1:AdapterManifest",
+  "title": "适配器能力声明",
+  "$ref": "#/$defs/AdapterManifest",
+  "$defs": {
+    "Capability": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "supported",
+            "unsupported",
+            "conditional"
+          ]
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "status",
+        "conditions"
+      ],
+      "additionalProperties": false
+    },
+    "AdapterManifest": {
+      "type": "object",
+      "properties": {
+        "adapter_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "license": {
+          "type": "string",
+          "minLength": 1
+        },
+        "execution_location": {
+          "type": "string",
+          "enum": [
+            "edge",
+            "center",
+            "browser"
+          ]
+        },
+        "supported_source_profiles": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "config_schema": {
+          "type": "object"
+        },
+        "credential_schema": {
+          "type": "object"
+        },
+        "capabilities": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Capability"
+          }
+        },
+        "rate_limits": {
+          "type": "object",
+          "properties": {
+            "requests_per_second": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "burst": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "concurrency": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "requests_per_second",
+            "burst",
+            "concurrency"
+          ],
+          "additionalProperties": false
+        },
+        "event_types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "record.upsert",
+              "record.tombstone",
+              "attachment.state",
+              "screen.segment",
+              "screen.observation",
+              "activity.interval",
+              "source.coverage"
+            ]
+          },
+          "minItems": 1
+        },
+        "fixture_set_version": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "adapter_id",
+        "version",
+        "license",
+        "execution_location",
+        "supported_source_profiles",
+        "config_schema",
+        "credential_schema",
+        "capabilities",
+        "rate_limits",
+        "event_types",
+        "fixture_set_version"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

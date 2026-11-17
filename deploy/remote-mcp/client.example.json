@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "MemULife": {
+      "url": "https://memory.example.com/mcp",
+      "headers": {"Authorization": "Bearer REPLACE_WITH_AGENT1_TOKEN"}
+    }
+  }
+}

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>记忆工作区 | MemULife</title>
+  <meta name="description" content="导入来源内容，浏览与管理已保存的记忆。">
+  <link rel="stylesheet" href="/manage/assets/imports/style.css">
+  <script type="module" src="/manage/assets/imports/index.js"></script>
+  <script type="module" src="/manage/assets/imports/chrome.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#import-content">跳到内容</a>
+  <header class="app-header">
+    <a class="brand" href="/manage/imports"><span class="brand-mark" data-icon="layers"></span>MemULife</a>
+    <nav id="workspace-nav" aria-label="工作区" hidden>
+      <a href="/manage/imports" data-workspace="imports">记忆导入</a>
+      <a href="/manage/memory" data-workspace="memory">记忆管理</a>
+    </nav>
+    <button id="logout" class="text-button" hidden><span data-icon="logout"></span>退出</button>
+  </header>
+  <section id="login" class="login-panel" aria-labelledby="login-title">
+    <span class="login-glyph" data-icon="lock"></span>
+    <h1 id="login-title">登录工作区</h1>
+    <form id="login-form">
+      <label class="field">管理密钥<input id="token" type="password" autocomplete="off" required></label>
+      <button id="login-submit" class="primary" type="submit">登录</button>
+    </form>
+    <label class="field credentials">凭据文件<input id="credentials" type="file" accept=".json"></label>
+    <p id="login-error" class="error" role="alert" hidden></p>
+  </section>
+  <div id="import-root" hidden></div>
+</body>
+</html>

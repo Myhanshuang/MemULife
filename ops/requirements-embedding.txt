@@ -1,0 +1,10 @@
+# Core's local CPU/BF16 embedding dependencies; do not install into the MLLM environment.
+sentence-transformers==6.1.0
+transformers==5.23.0
+torch==2.11.0
+jinja2==3.1.6
+psycopg[binary]==3.3.9
+Pillow==12.2.0
+soundfile==0.13.1
+soxr==1.1.0
+av==17.1.0

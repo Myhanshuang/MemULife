@@ -1,0 +1,6 @@
+{
+  "adapter_id": "browser.ai-history",
+  "source_profile": "chatgpt",
+  "source_namespace": "chatgpt:explicit-account-workspace",
+  "config": {"provider": "chatgpt", "account_id": "REPLACE_ACCOUNT_ID", "workspace_id": "REPLACE_WORKSPACE_ID"}
+}

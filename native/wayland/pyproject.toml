@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "memulife-wayland"
+version = "0.1.0"
+description = "Explicitly authorized XDG Portal and PipeWire capture helper"
+requires-python = ">=3.10"
+
+[project.scripts]
+memulife-wayland = "memulife_wayland.__main__:main"
+
+[tool.setuptools]
+packages = ["memulife_wayland"]
+package-dir = {memulife_wayland = "."}

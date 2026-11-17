@@ -1,0 +1,4 @@
+{
+  "scopes": ["sessions/selected-session.jsonl"],
+  "include_attachments": false
+}

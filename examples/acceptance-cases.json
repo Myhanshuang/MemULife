@@ -1,0 +1,7 @@
+[
+  {"name":"回忆实际日期","source_time":"2026-11-13","source":"用户说：我在 11 月 10 日完成了 B。","expected":{"event_date":"2026-11-10","must_not":"以 13 日当完成日期"},"status":"awaiting_real_model"},
+  {"name":"计划与测试","source_time":"2026-11-13","source":"下月停用 A；我已经测试 B。","expected":{"preserve":["停用 A 是计划","B 只是已测试"],"must_not":["已经停用 A","已经迁移到 B"]},"status":"awaiting_real_model"},
+  {"name":"否决","source_time":"2026-11-13","source":"助手提议迁移到 B。用户明确否决，继续使用 A。","expected":{"unit":"同时保留提议与否决事实","views":"现状仍为使用 A，不把被否决迁移当计划"},"status":"awaiting_real_model"},
+  {"name":"不连续证据","source_time":"2026-11-13","source_lines":["用户说：继续使用 A。","与本事件无关的对话。","用户补充：仅测试过 B。"],"expected":{"facts":["cN:1","cN:3"],"must_not":"cN:1-3"},"status":"awaiting_real_model"},
+  {"name":"相似画面","source":"不同日期的两段相似球场视频，各有明确原生片段地址。","expected":{"unit":"两个事件独立保留","relation":"不因向量相似就断言同一事件","embedding":"实际传入原生视频片段，核对 space_id"},"status":"awaiting_real_model"}
+]
