@@ -80,7 +80,7 @@ Host 按 provider/account/workspace 三项匹配；使用当前项目 `.env` 中
 | 平台 ID | 已实现 | 仍需真实环境准入 |
 |---|---|---|
 | `chatgpt` | 在已打开的 ChatGPT 标签页内读取限定接口，原生用户/工作空间绑定、offset 列表、完整 mapping DAG、全部节点及非文本原文 | 需保持对应账号标签页打开；特殊/归档/项目 scope、图片原件、目标网页版本仍未验收 |
-| `claude` | 账号与组织绑定、列表与 tree 详情、工具/未知块原文、eventual 后续复查 | 目标版本树字段、Artifacts/附件原件、特殊 scope |
+| `claude` | 优先通过已打开的 claude.ai 标签页读取，关闭标签页时沿用后台读取；账号与组织绑定、列表与 tree 详情、工具/未知块原文、eventual 后续复查 | 目标版本树字段、Artifacts/附件原件、特殊 scope |
 | `gemini` | 从已打开的 Gemini 标签页识别 `/app` 或 `/u/N/app`，在对应页面会话内读取限定 RPC、多个 batchexecute frame、列表/详情 opaque 分页、候选原文 | 需保持对应账号标签页打开；稳定原生 principal、分支与媒体仍未验收；当前绑定会话指纹，变更需重新配对 |
 | `perplexity` | UUID/slug 分离、列表分页、100 条之后的详情分页、引用原文 | 真实服务分页终止条件、原生 principal、附件；当前仅会话绑定 |
 | `deepseek` | 精确 `(updated_at,id)` 游标、无 cache_version 完整读取、所有 fragments 原文 | pinned scope、真实账号字段、附件；MERGE 会保留旧数据并重试完整读取，不冒充 REPLACE |

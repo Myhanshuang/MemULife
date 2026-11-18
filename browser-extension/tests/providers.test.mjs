@@ -349,3 +349,20 @@ test('throttle Retry-After is never shortened to local retry cap', async () => {
   assert.ok(retryAt(error, 1, now) >= now + 7_200_000);
   assert.equal(retryAfter('Wed, 21 Oct 2037 07:28:00 GMT', now), Date.parse('Wed, 21 Oct 2037 07:28:00 GMT'));
 });
+
+test('Claude reads default detail after an empty tree and projects both text representations', async () => {
+  const { conversationRecord } = await import('../dist/src/providers.js');
+  const requests = [];
+  const provider = new Provider('claude', new ReadClient('claude', async url => {
+    requests.push(url);
+    return response({ uuid: item.id, chat_messages: url.search ? [] : [
+      { uuid: 'a', sender: 'human', content: [{ text: '' }], text: 'question' },
+      { uuid: 'b', sender: 'assistant', content: 'answer' },
+    ] });
+  }, 0), broker);
+  const detail = await provider.detail(binding('claude'), item, null);
+  const record = await conversationRecord('claude', item, [detail]);
+  assert.equal(requests.length, 2);
+  assert.equal(requests[0].pathname, requests[1].pathname);
+  assert.deepEqual(JSON.parse(record.raw).messages.map(m => [m.id, m.text]), [['a', 'question'], ['b', 'answer']]);
+});

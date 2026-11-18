@@ -24,12 +24,22 @@ test('image-only messages and original bytes survive projection, deduplicated by
   assert.equal(JSON.parse(record.raw).attachment_manifest[0].status, 'available');
 });
 
-test('excluded attachments never download and a failed download cannot become a successful text-only import', async () => {
+test('excluded and unavailable attachments preserve the conversation; revoked selection stops import', async () => {
   const record = await conversationRecord('chatgpt', item, pages);
   await attachOriginals('chatgpt', record, pages, false, async () => assert.fail('excluded download'), async () => true);
   assert.equal(record.attachments[0].status, 'excluded');
-  await assert.rejects(attachOriginals('chatgpt', record, pages, true,
-    async () => { throw new AdapterError('attachment_download_failed'); }, async () => true), /attachment_download_failed/);
+  const mixed = structuredClone(data);
+  mixed.mapping.q.message.metadata.attachments.push({id: 'file_002', name: 'notes.txt'});
+  const mixedPages = [{data: mixed, raw: JSON.stringify(mixed), cursor: null}];
+  const partial = await conversationRecord('chatgpt', item, mixedPages);
+  const messages = JSON.parse(partial.raw).messages;
+  await attachOriginals('chatgpt', partial, mixedPages, true, async ref => {
+    if (ref.id === 'file_001') throw new AdapterError('attachment_source_unavailable');
+    return {data: btoa('notes'), mime_type: 'text/plain'};
+  }, async () => true);
+  assert.deepEqual(JSON.parse(partial.raw).messages, messages);
+  assert.deepEqual(partial.attachments.map(a => a.status), ['pending', 'available']);
+  assert.equal(partial.attachments[0].metadata.error_code, 'attachment_source_unavailable');
   await assert.rejects(attachOriginals('chatgpt', record, pages, true,
     async () => assert.fail('revoked download'), async () => false), /import_selection_unavailable/);
 });

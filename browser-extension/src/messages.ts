@@ -1,8 +1,9 @@
+import { attachmentRefs } from './attachments.ts';
 import { perplexityAnswer, perplexityTime } from './perplexity.ts';
 /** Bounded, canonical message views. Original response frames never enter this format. */
 import { AdapterError } from './types.ts';
 import type { DetailPage, ProviderId, SourceRecord, Summary } from './types.ts';
-import { array, bytes, nativeId, object, sha256, textParts } from './wire.ts';
+import { array, bytes, nativeId, object, sha256, claudeMessageText, textParts } from './wire.ts';
 
 export const MAX_PREVIEW_MESSAGES = 500;
 export const MAX_PREVIEW_BYTES = 900 * 1024;
@@ -44,8 +45,18 @@ export const messageDigest = (message: Message): Promise<string> =>
 /** A missing native ID is content/path addressed; shifted or edited messages then fail closed. */
 export async function projectMessages(provider: ProviderId, item: Summary, pages: DetailPage[], preview = true): Promise<PreviewMessage[]> {
   const values: PreviewMessage[] = [], seen = new Map<string, string>();
+  const filesByMessage = new Map<string, string[]>();
+  if (!preview && (provider === 'claude' || provider === 'gemini')) {
+    for (const ref of attachmentRefs(provider, pages)) for (const id of ref.messageIds) {
+      const names = filesByMessage.get(id) ?? [];
+      names.push(ref.name);
+      filesByMessage.set(id, names);
+    }
+  }
   let total = 0;
   async function add(identity: unknown, path: string, actor: MessageRole, text: string, occurred: unknown = null) {
+    const names = typeof identity === 'string' && filesByMessage.get(identity);
+    if (!text && names) text = `[附件：${names.join('、')}]`;
     if (!text) return; // Non-text/opaque blocks are not selectable text messages.
     if (/[\ud800-\udfff]/u.test(text)) throw new AdapterError('incompatible_schema');
     let id: string;
@@ -83,9 +94,8 @@ export async function projectMessages(provider: ProviderId, item: Summary, pages
     } else if (provider === 'claude') {
       for (const [index, message] of array(data.chat_messages).entries()) {
         object(message);
-        const blocks = textParts(message.content);
         await add(message.uuid ?? message.id, `${pageIndex}/chat_messages/${index}`, role(message.sender ?? message.role),
-          blocks.length ? blocks.join('\n\n') : typeof message.text === 'string' ? message.text : '', message.created_at);
+          claudeMessageText(message), message.created_at);
       }
     } else if (provider === 'gemini') {
       for (const [frameIndex, frame] of array(data.frames).entries()) for (const [turnIndex, turn] of array(frame[0]).entries()) {
@@ -93,7 +103,7 @@ export async function projectMessages(provider: ProviderId, item: Summary, pages
         const turnId = typeof turn[0]?.[1] === 'string' ? turn[0][1] : typeof turn[0] === 'string' && turn[0] ? turn[0] : null;
         const path = `${pageIndex}/frames/${frameIndex}/turns/${turnIndex}`;
         const question = turn[2]?.[0]?.[0];
-        if (typeof question === 'string') await add(turnId && `turn:${turnId}:user`, `${path}/user`, 'user', question, turn[4]);
+        await add(turnId && `turn:${turnId}:user`, `${path}/user`, 'user', typeof question === 'string' ? question : '', turn[4]);
         for (const [index, candidate] of (Array.isArray(turn[3]?.[0]) ? turn[3][0] : []).entries()) {
           const text = candidate?.[1]?.[0];
           const candidateId = typeof candidate?.[0] === 'string' && candidate[0] ? candidate[0] : null;

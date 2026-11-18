@@ -1,3 +1,4 @@
+import { claudeWorkspacePath } from './attachments.ts';
 import { AdapterError } from './types.ts';
 import { ORIGINS } from './http.ts';
 import type { AuthBroker } from './providers.ts';
@@ -7,28 +8,38 @@ function geminiAppPath(value: string): string | null {
   return match?.[1] ?? null;
 }
 
-/** Fetch only ChatGPT's pinned read endpoints from an open, signed-in ChatGPT tab. */
 export async function chatgptFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+  return conversationTabFetch('chatgpt', input, init);
+}
+
+export function claudeFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+  return conversationTabFetch('claude', input, init);
+}
+
+async function conversationTabFetch(provider: 'chatgpt' | 'claude', input: RequestInfo | URL, init: RequestInit): Promise<Response> {
   const url = new URL(String(input));
-  const allowed = [/^\/api\/auth\/session$/, /^\/backend-api\/accounts\/check\/v4-2023-04-27$/,
+  const allowed = provider === 'claude' ? [/^\/api\/account$/, /^\/api\/organizations$/,
+    /^\/api\/organizations\/[\w-]+\/chat_conversations(?:\/[\w-]+)?$/] : [/^\/api\/auth\/session$/, /^\/backend-api\/accounts\/check\/v4-2023-04-27$/,
     /^\/backend-api\/conversations$/, /^\/backend-api\/conversation\/[^/]+$/];
-  if (url.origin !== ORIGINS.chatgpt || (init.method ?? 'GET').toUpperCase() !== 'GET' ||
+  if (url.origin !== ORIGINS[provider] || (init.method ?? 'GET').toUpperCase() !== 'GET' ||
       !allowed.some(pattern => pattern.test(url.pathname))) throw new AdapterError('scope_denied');
-  const tabs = await chrome.tabs.query({ url: `${ORIGINS.chatgpt}/*` });
+  const tabs = await chrome.tabs.query({ url: `${ORIGINS[provider]}/*` });
   const tab = tabs.find(value => value.id !== undefined);
+  if (tab?.id === undefined && provider === 'claude') return fetch(input, init);
   if (tab?.id === undefined) throw new AdapterError('dormant_browser');
   const supplied = new Headers(init.headers);
   const headers: Record<string, string> = {};
-  for (const name of ['accept', 'authorization', 'chatgpt-account-id']) {
+  for (const name of provider === 'claude' ? ['accept'] : ['accept', 'authorization', 'chatgpt-account-id']) {
     const value = supplied.get(name);
     if (value) headers[name] = value;
   }
   let result: { status: number; raw?: string; retryAfter?: string | null; error?: string } | undefined;
   try {
     const injected = await chrome.scripting.executeScript({ target: { tabId: tab.id }, world: 'MAIN',
-      args: [{ path: url.pathname + url.search, headers }],
+      args: [{ provider, origin: url.origin, path: url.pathname + url.search, headers }],
       func: async request => {
         try {
+          if (location.origin !== request.origin) return { status: 0, error: 'scope_denied' };
           const response = await fetch(request.path, { method: 'GET', credentials: 'include',
             redirect: 'error', cache: 'no-store', signal: AbortSignal.timeout(20_000), headers: request.headers });
           if (response.url && new URL(response.url).origin !== location.origin) return { status: 0, error: 'scope_denied' };
@@ -36,12 +47,12 @@ export async function chatgptFetch(input: RequestInfo | URL, init: RequestInit =
           const raw = await response.text();
           return raw.length <= 16 * 1024 * 1024
             ? { status: response.status, raw } : { status: 0, error: 'response_too_large' };
-        } catch { return { status: 0, error: 'chatgpt_page_request_failed' }; }
+        } catch { return { status: 0, error: request.provider + '_page_request_failed' }; }
       },
     });
     result = injected[0]?.result;
-  } catch { throw new AdapterError('chatgpt_tab_unavailable'); }
-  if (!result) throw new AdapterError('chatgpt_tab_unavailable');
+  } catch { throw new AdapterError(provider + '_tab_unavailable'); }
+  if (!result) throw new AdapterError(provider + '_tab_unavailable');
   if (result.error) throw new AdapterError(result.error);
   return new Response(result.status === 204 ? null : result.raw ?? '', {
     status: result.status, headers: result.retryAfter ? { 'retry-after': result.retryAfter } : undefined,
@@ -122,6 +133,65 @@ export async function perplexityFetch(input: RequestInfo | URL, init: RequestIni
 
 /** No cookie inventory, no general token-key scanning, no credential persistence. */
 export const browserBroker: AuthBroker = {
+  async originalAttachment(provider, workspace, ref, maxBytes, conversationId) {
+    if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > 100 * 1024 * 1024)
+      throw new AdapterError('attachment_budget_exceeded');
+    const origin = ORIGINS[provider];
+    let url: URL;
+    if (provider === 'claude') {
+      if (!/^[\w-]+$/.test(workspace) || (!ref.outputPath && !/^[\w-]+$/.test(ref.id))) throw new AdapterError('attachment_reference_invalid');
+      const prefix = `/api/${workspace}/files/${ref.id}/`;
+      if (ref.originalUrl && !ref.outputPath) {
+        url = new URL(ref.originalUrl, origin);
+        if (url.origin !== origin || !url.pathname.startsWith(prefix) ||
+            !/^[\w-]+$/.test(url.pathname.slice(prefix.length))) throw new AdapterError('attachment_origin_denied');
+      } else {
+        if (!/^[\w-]+$/.test(conversationId) || /[\/\\\x00-\x1f]/.test(ref.name) ||
+            ['.', '..'].includes(ref.name)) throw new AdapterError('attachment_reference_invalid');
+        url = new URL(`/api/organizations/${workspace}/conversations/${conversationId}/wiggle/download-file`, origin);
+        if (ref.outputPath !== undefined && !claudeWorkspacePath(ref.outputPath)) throw new AdapterError('attachment_reference_invalid');
+        url.searchParams.set('path', ref.outputPath ?? '/mnt/user-data/uploads/' + ref.name);
+      }
+    } else {
+      if (!ref.originalUrl || !URL.canParse(ref.originalUrl)) throw new AdapterError('attachment_download_url_missing');
+      url = new URL(ref.originalUrl);
+      if (url.protocol !== 'https:' || url.port || !url.hostname.endsWith('.googleusercontent.com'))
+        throw new AdapterError('attachment_origin_denied');
+    }
+    if (url.username || url.password) throw new AdapterError('attachment_origin_denied');
+    const tabs = await chrome.tabs.query({ url: origin + '/*' });
+    const app = workspace === 'default' ? '/app' : '/' + workspace + '/app';
+    const tab = tabs.find(tab => tab.id !== undefined && (provider === 'claude' ||
+      (tab.url && geminiAppPath(new URL(tab.url).pathname) === app)));
+    if (tab?.id === undefined) throw new AdapterError('dormant_browser');
+    const [entry] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, world: 'ISOLATED',
+      args: [{ origin, href: url.href, limit: maxBytes, scope: provider === 'gemini' ? app : '' }],
+      func: async ({ origin, href, limit, scope }) => {
+        if (location.origin !== origin || (scope && location.pathname !== scope &&
+            !location.pathname.startsWith(scope + '/'))) return { error: 'attachment_origin_denied' };
+        try {
+          const file = await fetch(href, { credentials: new URL(href).origin === origin ? 'include' : 'omit',
+            redirect: 'error', cache: 'no-store', referrerPolicy: 'no-referrer', signal: AbortSignal.timeout(180000) });
+          if (!file.ok) return { error: file.status === 429 ? 'throttled' : 'attachment_http_' + file.status };
+          const type = (file.headers.get('content-type') ?? 'application/octet-stream').split(';')[0];
+          if (type.toLowerCase() === 'text/html' || !file.body) return { error: 'attachment_unexpected_response' };
+          const reader = file.body.getReader();
+          let size = 0, binary = '';
+          while (true) {
+            const part = await reader.read();
+            if (part.done) break;
+            size += part.value.length;
+            if (size > limit) { await reader.cancel(); return { error: 'attachment_too_large' }; }
+            for (let i = 0; i < part.value.length; i += 8192)
+              binary += String.fromCharCode(...part.value.subarray(i, i + 8192));
+          }
+          return size ? { data: btoa(binary), mime_type: type } : { error: 'attachment_empty' };
+        } catch { return { error: 'attachment_download_failed' }; }
+      },
+    });
+    if (!entry?.result?.data) throw new AdapterError(entry?.result?.error ?? 'attachment_download_failed');
+    return { data: entry.result.data, mime_type: entry.result.mime_type! };
+  },
   async chatgptAttachment(accessToken, workspaceId, fileId, maxBytes, conversationId) {
     if (!/^file[-_][A-Za-z0-9_-]{1,200}$/.test(fileId) || !Number.isSafeInteger(maxBytes) ||
         maxBytes <= 0 || maxBytes > 100 * 1024 * 1024 || !/^[A-Za-z0-9_-]{1,128}$/.test(conversationId)) throw new AdapterError('attachment_reference_invalid');

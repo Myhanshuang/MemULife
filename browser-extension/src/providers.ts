@@ -3,7 +3,7 @@ import { projectMessages } from './messages.ts';
 import { AdapterError } from './types.ts';
 import type { Account, Binding, DetailPage, JsonObject, ListPage, ProviderId, SourceRecord, Summary } from './types.ts';
 import { ORIGINS, ReadClient } from './http.ts';
-import { array, nativeId, object, parseJson, sha256, textParts } from './wire.ts';
+import { array, nativeId, object, parseJson, sha256, claudeMessageText, textParts } from './wire.ts';
 import type { AttachmentRef, DownloadedAttachment } from './attachments.ts';
 
 export const PROVIDERS: ProviderId[] = ['chatgpt', 'claude', 'gemini', 'perplexity', 'deepseek', 'grok'];
@@ -16,6 +16,7 @@ export interface AuthBroker {
   geminiPaths?(): Promise<string[]>;
   geminiRequest?(path: string, method: 'GET' | 'POST', body?: string): Promise<string>;
   chatgptActiveWorkspace?(accessToken: string, workspaceIds: string[]): Promise<string | null>;
+  originalAttachment?(provider: 'claude' | 'gemini', workspace: string, ref: AttachmentRef, maxBytes: number, conversationId: string): Promise<DownloadedAttachment>;
   chatgptAttachment?(accessToken: string, workspaceId: string, fileId: string, maxBytes: number, conversationId: string): Promise<DownloadedAttachment>;
 }
 
@@ -183,6 +184,8 @@ export class Provider {
   }
 
   async attachment(binding: Account, ref: AttachmentRef, maxBytes: number, conversationId: string): Promise<DownloadedAttachment> {
+    if ((this.id === 'claude' || this.id === 'gemini') && this.broker.originalAttachment)
+      return this.broker.originalAttachment(this.id, binding.workspace_id, ref, maxBytes, conversationId);
     if (this.id !== 'chatgpt' || !this.broker.chatgptAttachment) throw new AdapterError('attachment_download_unsupported');
     return this.broker.chatgptAttachment(this.token!, binding.workspace_id, ref.id, maxBytes, conversationId);
   }
@@ -272,9 +275,17 @@ export class Provider {
       return { ...response, cursor: null };
     }
     if (this.id === 'claude') {
-      const response = await this.client.request(`/api/organizations/${encodeURIComponent(binding.workspace_id)}/chat_conversations/${id}?tree=True&rendering_mode=messages&render_all_tools=true&consistency=eventual`, options);
-      array(response.data.chat_messages);
-      if (response.data.uuid != null && nativeId(response.data.uuid) !== item.id) throw new AdapterError('source_identity_mismatch');
+      const path = `/api/organizations/${encodeURIComponent(binding.workspace_id)}/chat_conversations/${id}`;
+      const read = async (query: string) => {
+        const result = await this.client.request(path + query, options);
+        array(result.data.chat_messages);
+        if (result.data.uuid != null && nativeId(result.data.uuid) !== item.id) throw new AdapterError('source_identity_mismatch');
+        return result;
+      };
+      let response = await read('?tree=True&rendering_mode=messages&render_all_tools=true&consistency=eventual');
+      if (!response.data.chat_messages.length) {
+        response = await read('');
+      }
       return { ...response, cursor: null };
     }
     if (this.id === 'gemini') {
@@ -339,9 +350,8 @@ export function project(provider: ProviderId, item: Summary, pages: DetailPage[]
     } else if (provider === 'claude') {
       for (const message of array(data.chat_messages)) {
         object(message);
-        const blocks = textParts(message.content);
-        texts.push(...blocks);
-        if (!blocks.length && typeof message.text === 'string') texts.push(message.text);
+        const text = claudeMessageText(message);
+        if (text) texts.push(text);
       }
       metadata.consistency = 'eventual';
     } else if (provider === 'gemini') {

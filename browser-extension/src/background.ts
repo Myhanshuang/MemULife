@@ -2,7 +2,7 @@ import { AdapterError } from './types.ts';
 import type { Account, Binding, ProviderId } from './types.ts';
 import { ORIGINS, ReadClient } from './http.ts';
 import { PROVIDERS, Provider } from './providers.ts';
-import { browserBroker, chatgptFetch, deepseekFetch, perplexityFetch } from './broker.ts';
+import { browserBroker, chatgptFetch, claudeFetch, deepseekFetch, perplexityFetch } from './broker.ts';
 import { Store } from './store.ts';
 import { Synchronizer } from './sync.ts';
 import { sourceSend, pairConnection, connectionStatus, localServiceURL, authorizeConnection } from './connection.ts';
@@ -14,7 +14,7 @@ let manualWakePending = false;
 const deferredSources = new Set<string>();
 const validProvider = (id: string): id is ProviderId => PROVIDERS.includes(id as ProviderId);
 const createProvider = (id: ProviderId) => new Provider(id,
-  new ReadClient(id, id === 'chatgpt' ? chatgptFetch : id === 'deepseek' ? deepseekFetch : id === 'perplexity' ? perplexityFetch : fetch), browserBroker);
+  new ReadClient(id, id === 'chatgpt' ? chatgptFetch : id === 'claude' ? claudeFetch : id === 'deepseek' ? deepseekFetch : id === 'perplexity' ? perplexityFetch : fetch), browserBroker);
 
 async function ensureAlarm(): Promise<void> {
   await chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' });

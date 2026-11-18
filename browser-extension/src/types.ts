@@ -62,7 +62,7 @@ export interface SourceAttachment {
   data: string | null;
   media_type: string;
   status: 'available' | 'pending' | 'excluded';
-  metadata: { name: string; message_ids: string[]; error_code?: string };
+  metadata: { name: string; message_ids: string[]; representation?: string; error_code?: string };
 }
 
 export interface DetailPage {

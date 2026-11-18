@@ -50,6 +50,13 @@ export function textParts(parts: any): string[] {
   });
 }
 
+export function claudeMessageText(message: Record<string, any>): string {
+  const content = typeof message.content === 'string' ? [message.content] : textParts(message.content);
+  const blocks = content.filter(text => text.trim());
+  if (blocks.length) return blocks.join('\n\n');
+  return typeof message.text === 'string' && message.text.trim() ? message.text : '';
+}
+
 export function bytes(text: string): Uint8Array<ArrayBuffer> { return encoder.encode(text); }
 
 export async function sha256(text: string): Promise<string> {
