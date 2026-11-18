@@ -49,6 +49,8 @@ def source_display(repo, block, *, offset=0, limit=20000):
                 message = message[heading.end():]
                 if origin.get('adapter_id') == 'browser.ai-history':
                     message = re.sub(r'^消息 ID：[^\n]*\n[^\n]*时间[^\n]*\n\n?', '', message)
+        if message.strip() and entry.get('event_kind') == 'tool_result' and entry.get('call_id') and offset <= low:
+            message = '调用 ID：' + str(entry['call_id']) + '\n' + message
         if message.strip():
             messages.append({'role': role, 'name': name, 'time': entry.get('occurred_at'),
                              'body': message.strip(), 'continued': offset > low})

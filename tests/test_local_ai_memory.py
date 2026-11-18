@@ -162,3 +162,32 @@ def test_observation_time_survives_digest_unit_and_repository_restart(database, 
     service.sync_index()
     assert not any(hit['ref'].startswith(alias + ':') for hit in service.index.grep('updated successfully'))
     repo.close()
+
+
+def test_codex_git_calls_stay_with_initiating_turn_and_link_late_result():
+    def item(kind, **fields):
+        return {'type': 'response_item', 'payload': {'type': kind, **fields}}
+
+    wrapper = 'text(await Promise.allSettled([tools.exec_command({cmd:"git status && git diff"}),tools.exec_command({cmd:"echo git push"})]))'
+    first, second = project('codex', [
+        item('message', role='user', content='inspect work'),
+        item('custom_tool_call', name='exec', call_id='call-1', input=wrapper),
+        item('message', role='user', content='next question'),
+        item('custom_tool_call_output', call_id='call-1', output='working tree clean'),
+    ])
+    assert 'git status、git diff' in first['text'] and 'git push' not in first['text']
+    assert '本轮未见配对返回' in first['text']
+    assert first['message_layout'][-1]['event_kind'] == 'tool_call'
+    assert first['message_layout'][-1]['call_id'] == second['message_layout'][-1]['call_id']
+    assert 'git status' not in second['text']
+
+
+def test_claude_git_return_belongs_to_whole_command():
+    m, = project('claude-code', [
+        {'type': 'assistant', 'message': {'content': [{'type': 'tool_use', 'name': 'Bash', 'id': 'g',
+         'input': {'command': 'git -C repo status && git commit -m "private message"'}}]}},
+        {'type': 'user', 'message': {'content': [{'type': 'tool_result', 'tool_use_id': 'g',
+         'is_error': True, 'content': 'commit failed'}]}},
+    ])
+    assert 'git status、git commit' in m['text'] and 'private message' not in m['text']
+    assert '整次调用的返回记录：1（error）' in m['text']

@@ -10,10 +10,11 @@ import re
 from .local_ai_tools import ANSWER_PREFIXES, classify, describe, result_excerpt
 
 from .local_ai_events import events, event_identity, parsed
+from .local_ai_git import git_operations
 from .local_ai_origin import reviewer_prompt, session_kind
 
-VERSION = 'local-ai-v4'
-GENERATION = 4
+VERSION = 'local-ai-v5'
+GENERATION = 5
 MAX_TOOL_EVENTS = 8
 MAX_ASSISTANT_EVENTS = 3
 MAX_AUDIT_CHARS = 512 * 1024
@@ -118,6 +119,8 @@ def _carry(group, profile, audit):
     for e in items:
         if e['kind'] == 'tool_call':
             calls[e.get('call_id')] = {**e, 'body': '', 'call_class': e.get('call_class') or classify(e),
+                                      'event_id': e.get('event_id') or event_identity(e),
+                                      'git_operations': e.get('git_operations') or git_operations(e),
                                       'call_description': e.get('call_description') or describe(e)}
     chain, count = _chain(group)
     value = {'format': CARRY_FORMAT, 'events': list(calls.values())[-128:] + _bounded(candidates),
@@ -261,9 +264,40 @@ def material_content(raw, profile='claude-code', metadata=None):
             lines.append('证据状态：' + e.get('outcome', 'returned'))
         body = e['body']
         lines.extend(body.splitlines()); lines.append('')
-        layout.append({k: e.get(k) for k in ('id', 'role', 'occurred_at', 'outcome', 'tool', 'tool_purpose', 'session_id', 'branch', 'event_id')} |
+        layout.append({k: e.get(k) for k in ('id', 'role', 'occurred_at', 'outcome', 'tool', 'tool_purpose', 'session_id', 'branch', 'call_id', 'event_id')} |
                       {'event_kind': e['kind'], 'start_line': start, 'end_line': len(lines),
                        'time_basis': 'event_timestamp' if e.get('occurred_at') else 'unknown'})
+    # Append call observations so existing evidence line ranges keep their meaning.
+    # The native call ID links late returns even when they land in another turn.
+    if not internal and not metadata.get('audit_only_part'):
+        returns = {(e.get('session_id'), e.get('branch'), e['call_id']): e
+                   for e in items if e['kind'] == 'tool_result' and e.get('call_id')}
+        seen_calls = set()
+        for call in items:
+            if call['kind'] != 'tool_call':
+                continue
+            operations = call.get('git_operations') or git_operations(call)
+            key = (call.get('session_id'), call.get('branch'), call.get('call_id') or call['id'])
+            if not operations or key in seen_calls:
+                continue
+            seen_calls.add(key)
+            start = len(lines) + 1
+            lines.extend(['## Git 工具调用（已发起）', '、'.join(operations)])
+            lines.append('调用原始记录：' + call['id'])
+            if call.get('call_id'):
+                lines.append('调用 ID：' + str(call['call_id']))
+            receipt = returns.get(key) if call.get('call_id') else None
+            if receipt:
+                lines.append('整次调用的返回记录：' + receipt['id'] + '（' + receipt.get('outcome', 'returned') + '）')
+            else:
+                lines.append('本轮未见配对返回')
+            if call.get('cwd'):
+                lines.append('会话工作目录：' + str(call['cwd']))
+            lines.append('')
+            layout.append({k: call.get(k) for k in ('id', 'session_id', 'branch', 'call_id', 'occurred_at', 'tool')} |
+                          {'event_id': call.get('event_id') or event_identity(call), 'event_kind': 'tool_call',
+                           'role': 'assistant', 'outcome': 'attempt', 'start_line': start, 'end_line': len(lines),
+                           'time_basis': 'event_timestamp' if call.get('occurred_at') else 'unknown'})
     conversation = metadata.get('conversation_id') or hashlib.sha256(json.dumps(
         [profile, [(r.get('metadata', {}).get('session_id'), r.get('metadata', {}).get('file')) for r in records[:1]]]).encode()).hexdigest()
     return {'text': '\n'.join(lines) if layout else '',
