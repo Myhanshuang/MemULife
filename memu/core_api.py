@@ -103,7 +103,7 @@ class CoreHandler(JSONHandler):
         elif common_write:
             result = self.server.admissions.submit(self.server.application.write, identity, arguments).result()
         else:
-            pool = (self.server.admissions if name == 'memory_write' else
+            pool = (self.server.admissions if name in {'memory_write', 'memory_create_unit'} else
                     self.server.writers if name == 'memory_manage' else self.server.readers)
             result = pool.submit(self.server.application.call, identity, name, arguments).result()
         self.respond(202 if common_write and result.get('result', {}).get('status') == 'accepted' else 200, result)

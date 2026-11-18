@@ -97,6 +97,16 @@ class WriteInput(CallerInput):
         return self
 
 
+class CreateUnitInput(CallerInput):
+    body: str = Field(min_length=1, max_length=100_000, pattern=r'\S')
+    source_refs: list[str] = Field(min_length=1, max_length=100)
+    relations: list[Relation] = Field(min_length=1, max_length=100,
+        description='从新 Unit 指向已有 Unit 的关系。')
+    time: Time | None = None
+    reason: str = Field(max_length=2000, pattern=r'\S')
+    idempotency_key: str = Field(max_length=512, pattern=r'\S')
+
+
 class StatusInput(CallerInput):
     request_id: str | None = None
     idempotency_key: str | None = None
@@ -116,12 +126,13 @@ class ManageInput(CallerInput):
 
 TOOL_MODELS = {
     "memory_read": ReadInput, "memory_search": SearchInput,
-    "memory_write": WriteInput, "memory_manage": ManageInput,
+    "memory_create_unit": CreateUnitInput, "memory_write": WriteInput, "memory_manage": ManageInput,
     'memory_status': StatusInput,
 }
 DESCRIPTIONS = {
     "memory_read": "按稳定定位符读取入口、条目、行段或媒体。日/月 Summary 和 Runtime 返回稳定 entry_id；修订使用 edit_revision。可用 entry_id 定位条目、history=true 读取修订历史；可取入/出关系。",
     "memory_search": "grep 仅匹配文字；semantic 原生编码文字/媒体，可组合 query_refs；返回 Unit 与可继续读取的地址。",
+    "memory_create_unit": "用户授权后，依据已有 Source 行段直接创建受保护 Unit，同时关联到已有 Unit。先读取证据与目标；提交最终正文、关系、理由和幂等键。返回新 Unit 定位符。",
     "memory_write": "用户授权后写入记忆。mode=ingest 保存真实素材并返回 accepted。mode=revise 顶层必须提供 reason、idempotency_key 和非空 changes 数组；每项包含 ref、expected_revision（读取返回的 edit_revision）、原样 old_text、new_text，直接原子修订 Unit、日/月 Summary 或 Runtime，不经内部模型重写。新增引用必须存在；Summary/Runtime 使用 entry_id，修改默认受保护；用户授权再次编辑受保护内容时指定 allow_protected=true，仍保留保护；仅显式 protect=false 解除保护。冲突时重新读取，禁止盲目覆盖；重试复用原幂等键。",
     'memory_status': '凭 request_id 或原 idempotency_key 查询本人写入状态、阶段、错误码和已提交地址；所有者可查询其他写入。',
     "memory_manage": "仅所有者：topics 列出跟踪主题；topic 用 scope 指定主题名、text 指定关注范围并归入历史记录；update 经来源事件更新视图；correct 删旧重建；delete 可清选定 Source；rebuild（含 topics）或 retry 维护失败任务。",
@@ -132,7 +143,7 @@ def tool_definitions(config) -> list[dict]:
     vocabulary = "；关系词表：" + "、".join(config.build.relation_vocab)
     definitions = [{
         "name": name,
-        "description": description + (vocabulary if name in {"memory_read", "memory_search"} else ""),
+        "description": description + (vocabulary if name in {"memory_read", "memory_search", "memory_create_unit"} else ""),
         "inputSchema": TOOL_MODELS[name].model_json_schema(by_alias=True),
         "annotations": {"readOnlyHint": name in {"memory_read", "memory_search", "memory_status"},
                         "destructiveHint": name in {"memory_manage", "memory_write"}, "openWorldHint": False},

@@ -256,3 +256,37 @@ def test_postgres_revision_rollback_recovery_and_index(database, tmp_path, monke
     kept = reopened.read(day)['entries'][0]
     assert kept['protected'] and kept['body'] == 'curated summary' and kept['entry_id'] == entry['entry_id']
     reopened.close()
+
+
+def test_mcp_create_unit_from_source_with_relation(tmp_path, monkeypatch):
+    service, refs, source, _ = fixture(Repository(tmp_path))
+    app = CoreApplication(service)
+    mcp = MCPApplication(app)
+    args = {'from': 'writer', 'body': 'Follow-up\n| ;;', 'source_refs': [source],
+            'relations': [{'rel': '相关', 'target': refs[0]}], 'reason': 'handoff', 'idempotency_key': 'create'}
+    def call(arguments, identity='writer', endpoint=mcp):
+        return endpoint.handle({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/call',
+            'params': {'name': 'memory_create_unit', 'arguments': arguments}}, identity)['result']
+
+    assert call(args, endpoint=MCPApplication(app, write_enabled=False))['isError']
+    assert call(dict(args, **{'from': 'reader'}), 'reader')['isError']
+    assert call(dict(args, source_refs=[refs[0]]))['isError']
+    assert call(dict(args, relations=[{'rel': '相关', 'target': source}]))['isError']
+    path = service.repo.root / service.repo.read(refs[0])['path']
+    original = path.read_bytes()
+    # A failure after append also rolls back the new Unit and idempotency receipt.
+    with monkeypatch.context() as patch:
+        patch.setattr(service, '_queue_topics', lambda **kw: 1 / 0)
+        assert call(dict(args, time=WHEN))['isError']
+    assert path.read_bytes() == original
+    result = call(dict(args, time=WHEN))['structuredContent']
+    ref = result['ref']
+    assert result == call(dict(args, time=WHEN))['structuredContent']
+    assert call(dict(args, body='different'))['structuredContent']['code'] == 'idempotency_conflict'
+    unit = service.repo.read(ref)
+    assert unit['body'] == args['body'] and unit['protected']
+    assert unit['facts'] == [source] and unit['relations'] == args['relations']
+    assert path.read_bytes().startswith(original)
+    assert len(service.memory_read(from_='writer', refs=[ref], history=True)['results']) == 1
+    service.sync_index()
+    assert service.memory_search(from_='writer', query='Follow-up')['results'][0]['ref'] == ref

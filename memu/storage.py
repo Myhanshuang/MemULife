@@ -424,7 +424,7 @@ class Repository:
             self._transaction({path: data})
             return alias
 
-    def append_entries(self, kind: str, entries: list[dict], source: str) -> list[str]:
+    def append_entries(self, kind: str, entries: list[dict], source: str, *, single_line=False) -> list[str]:
         if kind not in {"unit", "detail"}:
             raise ValueError("only unit/detail files support append_entries")
         if not entries:
@@ -453,7 +453,11 @@ class Repository:
                 if old and not old.endswith("\n"):
                     old += "\n"
                 start = line_counts[path] + 1
-                rendered = _render_entry(entry, source)
+                if single_line:
+                    from .revision_storage import entry_line
+                    rendered = entry_line(dict(entry, source=source))
+                else:
+                    rendered = _render_entry(entry, source)
                 end = start + len(rendered.splitlines()) - 1
                 line_counts[path] = end
                 refs.append(f"{alias}:{start}" if kind == "unit" else f"{alias}:{start}-{end}")

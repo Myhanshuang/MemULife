@@ -6,7 +6,7 @@ the repository's journalled transaction with the authoritative content.
 from copy import deepcopy
 import hashlib
 import json
-import time
+from time import time as timestamp
 import uuid
 
 from .refs import Ref
@@ -24,6 +24,58 @@ def snapshot(value):
 
 
 class MemoryRevisions:
+    def memory_create_unit(self, *, from_, body, source_refs, relations, reason, idempotency_key, time=None):
+        from .operations import CreateUnitInput
+        self._authorize(from_, 'write')
+        args = CreateUnitInput.model_validate({'from': from_, 'body': body, 'source_refs': source_refs,
+            'relations': relations, 'reason': reason, 'idempotency_key': idempotency_key, 'time': time})
+        if '\x00' in body:
+            raise ValueError('Unit body contains NUL')
+        fingerprint = digest(['memory_create_unit', args.model_dump(by_alias=True)])
+        key = digest([from_, idempotency_key])
+        with self._write_lock, self.repo.transaction():
+            batches = self.repo.state.setdefault('edit_batches', {})
+            previous = batches.get(key)
+            if previous:
+                if previous['fingerprint'] != fingerprint:
+                    return {'status': 'conflict', 'code': 'idempotency_conflict'}
+                return deepcopy(previous['result'])
+
+            facts = []
+            for locator in args.source_refs:
+                evidence = self.repo.read(Ref.parse(locator).canonical)
+                if evidence['kind'] != 'source':
+                    raise ValueError('source_refs requires existing Source evidence')
+                facts.append(evidence['ref'])
+            links = []
+            for relation in args.relations:
+                target = self.repo.read(Ref.parse(relation.target).canonical)
+                if target['kind'] != 'unit' or relation.rel not in self.config.build.relation_vocab:
+                    raise ValueError('Invalid Unit relation or relation vocabulary')
+                link = {'rel': relation.rel, 'target': target['ref']}
+                if link not in links:
+                    links.append(link)
+            entry = {'body': body, 'facts': list(dict.fromkeys(facts)), 'relations': links, 'topics': [],
+                     'time': args.time.model_dump(by_alias=True) if args.time else {'precision': 'unknown', 'value': None}}
+            ref, = self.repo.append_entries('unit', [entry], from_, single_line=True)
+            transaction_id = uuid.uuid4().hex
+            self.repo.state.setdefault('edit_heads', {})[ref] = {'batch_key': key, 'transaction_id': transaction_id}
+            self.repo.state.setdefault('unit_pins', {})[ref] = dict(entry, source=from_, protected=True)
+            record = self.repo.read(ref)
+            self._mark_views(record, rebuild=True, immediate=True, blocked=True)
+            self._queue_topics(immediate=True)
+            self._queue_view('memory', 'global', rebuild=True, immediate=True, blocked=True)
+            self.repo.state['index_dirty'] = True
+            self.repo.state.pop('index_retry_at', None)
+            result = {'status': 'done', 'ref': ref, 'edit_revision': record['edit_revision'],
+                      'transaction_id': transaction_id, 'index': 'queued', 'views': 'queued'}
+            batches[key] = {'transaction_id': transaction_id, 'fingerprint': fingerprint, 'actor': from_,
+                            'reason': reason, 'at': timestamp(), 'result': result, 'changes': [
+                                {'ref': ref, 'entry_id': None, 'before': None, 'previous': None, 'after': snapshot(record)}]}
+            self.repo.save_state()
+        self.changed.set()
+        return result
+
     def _revise(self, actor, arguments):
         payload = arguments.model_dump(by_alias=True)
         fingerprint = digest(payload)
@@ -182,7 +234,7 @@ class MemoryRevisions:
             result = {'status': 'done', 'transaction_id': transaction_id, 'changed': changed,
                       'index': 'queued', 'views': 'queued'}
             batches[key] = {'transaction_id': transaction_id, 'fingerprint': fingerprint, 'actor': actor,
-                            'reason': arguments.reason, 'at': time.time(), 'changes': audit, 'result': result}
+                            'reason': arguments.reason, 'at': timestamp(), 'changes': audit, 'result': result}
             self.repo.save_state()
         self.changed.set()
         return result

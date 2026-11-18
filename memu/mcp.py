@@ -98,18 +98,18 @@ class MCPApplication:
                 result = self.core.tools(identity)
                 if not self.write_enabled:
                     result = {**result, 'tools': [tool for tool in result['tools']
-                                                 if tool['name'] != 'memory_write']}
+                                                 if tool['name'] not in {'memory_write', 'memory_create_unit'}]}
                 return {'jsonrpc': '2.0', 'id': request_id, 'result': result}
             if method != 'tools/call':
                 return _error(request_id, -32601, 'Method not found')
             name, arguments = params.get('name'), params.get('arguments', {})
-            if name not in {'memory_read', 'memory_search', 'memory_write', 'memory_manage', 'memory_status'}:
+            if name not in {'memory_read', 'memory_search', 'memory_write', 'memory_manage', 'memory_status', 'memory_create_unit'}:
                 return _error(request_id, -32602, 'Unknown tool')
             if not isinstance(arguments, dict):
                 return _error(request_id, -32602, 'arguments must be an object')
-            if name == 'memory_write' and not self.write_enabled:
+            if name in {'memory_write', 'memory_create_unit'} and not self.write_enabled:
                 response = {'is_error': True, 'result': {'error': {
-                    'code': 'tool_disabled', 'message': 'memory_write is temporarily disabled'}}}
+                    'code': 'tool_disabled', 'message': f'{name} is temporarily disabled'}}}
             elif name == 'memory_write' and external_write_error(arguments):
                 response = external_write_error(arguments)
             else:
