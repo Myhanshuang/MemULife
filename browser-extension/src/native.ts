@@ -4,7 +4,7 @@ import { bytes, sha256 } from './wire.ts';
 
 export type NativeSend = (message: JsonObject) => Promise<JsonObject>;
 const MAX_MESSAGE = 1024 * 1024;
-const MAX_TRANSFER = 16 * MAX_MESSAGE;
+const MAX_TRANSFER = 160 * MAX_MESSAGE;
 const CHUNK_BYTES = 192 * 1024;
 
 function base64(data: Uint8Array): string {

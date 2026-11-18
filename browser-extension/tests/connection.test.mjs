@@ -3,9 +3,10 @@ import { test } from 'node:test';
 import { localServiceURL, pairConnection, connectionStatus, sourceSend } from '../dist/src/connection.js';
 import { bindingId } from '../dist/src/wire.js';
 
-test('web transport accepts only explicit loopback origins without embedded credentials or paths', () => {
+test('web transport accepts HTTPS or loopback origins without embedded credentials or paths', () => {
   assert.equal(localServiceURL('http://127.0.0.1:5073/'), 'http://127.0.0.1:5073');
-  for (const value of ['https://example.com:5073', 'http://127.0.0.1:5073/path', 'http://a:b@localhost:5073',
+  assert.equal(localServiceURL('https://memory.example.com/'), 'https://memory.example.com');
+  for (const value of ['http://example.com:5073', 'https://a:b@example.com', 'https://example.com/#token', 'http://127.0.0.1:5073/path', 'http://a:b@localhost:5073',
     'http://localhost', 'http://127.0.0.1:5073?token=secret']) {
     assert.throws(() => localServiceURL(value));
   }

@@ -9,7 +9,7 @@ x-core-environment: &core-environment
   MEMU_MEMORY_ROOT: /data/memory
   MEMU_CORE_HOST: 0.0.0.0
   MEMU_CORE_ALLOWED_HOSTS: '["localhost","127.0.0.1","memu-core"]'
-  MEMU_CORE_MAX_BODY_BYTES: '100663296'
+  MEMU_CORE_MAX_BODY_BYTES: '201326592'
   MEMU_ACCESS_WHITELIST: '{"owner":["read","write"],"agent1":["read","write"]}'
   MEMU_ACCESS_OWNERS: '["owner"]'
   MEMU_TIMEZONE: ${MEMU_TIMEZONE:-Asia/Shanghai}

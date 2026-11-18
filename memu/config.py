@@ -143,7 +143,7 @@ class HTTPConfig(StrictModel):
     allowed_hosts: list[str] = Field(default_factory=lambda: ['localhost', '127.0.0.1', '::1'])
     allowed_origins: list[str] = Field(default_factory=list)
     max_requests: int = Field(default=16, ge=4, le=64)
-    max_body_bytes: int = Field(default=16 * 1024 ** 2, ge=1024, le=96 * 1024 ** 2)
+    max_body_bytes: int = Field(default=16 * 1024 ** 2, ge=1024, le=192 * 1024 ** 2)
 
     @field_validator('allowed_hosts')
     @classmethod

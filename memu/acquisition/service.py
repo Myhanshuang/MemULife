@@ -375,7 +375,9 @@ class AcquisitionService:
                 eligible.append(job)
             if not eligible:
                 return False
-            job = min(eligible, key=lambda item: (item['job_id'] not in self.readers, item['updated_at']))
+            # Reuse readers without allowing a large backfill to starve another
+            # source (or a delivered job waiting for its processing receipts).
+            job = min(eligible, key=lambda item: (item['updated_at'], item['job_id'] not in self.readers))
             job_id = job['job_id']
             self.inflight.add(job_id)
         try:

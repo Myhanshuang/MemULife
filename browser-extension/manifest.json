@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "MemULife · 浏览器连接器",
-  "description": "为本机 MemULife 网页提供经授权的 AI 会话读取。",
-  "version": "0.6.1",
+  "description": "为你的 MemULife 管理页提供经授权的 AI 会话读取。",
+  "version": "0.6.7",
   "minimum_chrome_version": "131",
   "permissions": [
     "alarms",
@@ -21,7 +21,8 @@
     "https://chat.deepseek.com/*",
     "https://grok.com/*",
     "http://127.0.0.1/*",
-    "http://localhost/*"
+    "http://localhost/*",
+    "https://*/*"
   ],
   "background": {
     "service_worker": "src/background.js",

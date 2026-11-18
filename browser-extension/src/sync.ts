@@ -97,7 +97,12 @@ export class Synchronizer {
         const state = await this.store.get('lists', binding.id);
         await this.store.discover(binding, selection.items, state);
       }
-      if (binding.next_sync_at <= Date.now()) await this.scan(binding);
+      if (binding.next_sync_at <= Date.now()) {
+        const scanDeadline = Math.min(deadline, Date.now() + 45_000);
+        for (let pages = 0; pages < 12 && Date.now() < scanDeadline; pages++) {
+          if (!await this.scan(binding)) break;
+        }
+      }
       const jobs = (await this.store.all<DetailJob>('jobs', binding.id))
         .filter(job => job.not_before <= Date.now()).sort((a, b) => a.not_before - b.not_before);
       for (const job of jobs.slice(0, 8)) {
@@ -114,7 +119,7 @@ export class Synchronizer {
     }
   }
 
-  private async scan(binding: Binding): Promise<void> {
+  private async scan(binding: Binding): Promise<boolean> {
     const state = await this.store.get('lists', binding.id);
     if (!state) throw new AdapterError('binding_not_found');
     const cursor = state.phase === 'head' ? null : state.cursor;
@@ -163,6 +168,7 @@ export class Synchronizer {
         .sort((a, b) => (a.observed_at ?? 0) - (b.observed_at ?? 0));
       for (const conversation of known.slice(0, 10)) await this.store.dirty(binding, conversation.summary);
     }
+    return !finished && page.cursor !== null;
   }
 
   private async readDetail(binding: Binding, job: DetailJob, deadline: number): Promise<void> {
@@ -270,7 +276,7 @@ export class Synchronizer {
       cursor: { conversation_id: job.summary.id, native_revision: record.revision,
         scope_complete: false, observed_at: new Date().toISOString() },
     } };
-    if (bytes(JSON.stringify(message)).length > 16 * 1024 * 1024) throw new AdapterError('capture_too_large');
+    if (bytes(JSON.stringify(message)).length > 160 * 1024 * 1024) throw new AdapterError('capture_too_large');
     await this.store.stage(job, message, await sha256(record.raw), messageHashes);
   }
 

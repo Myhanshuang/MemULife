@@ -17,7 +17,7 @@ from .sources.message_preview import previews
 from .sources.messages import restrict_page
 from .sources.selection import Selection
 
-MAX_CAPTURE = 16 * 1024 * 1024
+MAX_CAPTURE = 160 * 1024 * 1024
 
 
 class BrowserExchange:
@@ -179,7 +179,7 @@ class BrowserExchange:
         with self.admitted(identity, source, params.get('import_job_id'), identities):
             transfer = str(UUID(params['transfer_id']))
             index, total = params.get('index'), params.get('total')
-            if type(index) is not int or type(total) is not int or not 0 <= index < total <= 86:
+            if type(index) is not int or type(total) is not int or not 0 <= index < total <= (MAX_CAPTURE + 192 * 1024 - 1) // (192 * 1024):
                 raise AdapterError('transfer_index_invalid')
             data = base64.b64decode(params['data_base64'], validate=True)
             if not 0 < len(data) <= 192 * 1024:
@@ -192,9 +192,10 @@ class BrowserExchange:
                 value = self.transfers.get(key, {'header': header, 'parts': {}, 'expires': stamp + 600})
                 if value['header'] != header or index in value['parts'] and value['parts'][index] != data:
                     raise AdapterError('transfer_conflict')
-                if sum(len(part) for v in self.transfers.values() for part in v['parts'].values()) + len(data) > 32 * 1024 * 1024:
+                if sum(len(part) for v in self.transfers.values() for part in v['parts'].values()) + len(data) > MAX_CAPTURE:
                     raise AdapterError('transfer_memory_capacity')
                 value['parts'][index] = data
+                value['expires'] = stamp + 600
                 self.transfers[key] = value
             return {'transfer_id': transfer, 'index': index, 'stored': True, 'storage': 'volatile'}
 

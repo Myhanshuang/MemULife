@@ -10,7 +10,14 @@ export interface AttachmentRef {
   messageIds: string[];
 }
 export interface DownloadedAttachment { data: string; mime_type: string; }
-export const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
+export const MAX_ATTACHMENT_BYTES = 100 * 1024 * 1024;
+
+function decodeBase64(data: string): Uint8Array<ArrayBuffer> {
+  const text = atob(data);
+  const bytes = new Uint8Array(text.length);
+  for (let i = 0; i < text.length; i++) bytes[i] = text.charCodeAt(i);
+  return bytes;
+}
 
 function mime(name: string, value?: string): string {
   if (value && value !== 'application/octet-stream') return value.split(';')[0].toLowerCase();
@@ -64,7 +71,7 @@ export async function attachOriginals(provider: ProviderId, record: SourceRecord
   download: (ref: AttachmentRef, maxBytes: number) => Promise<DownloadedAttachment>, permitted: () => Promise<boolean>): Promise<void> {
   const attachments: SourceAttachment[] = [];
   // Leave room for the original conversation and the base64 expansion in the native capture.
-  let remaining = Math.min(MAX_ATTACHMENT_BYTES, Math.max(0, Math.floor((15 * 1024 * 1024 -
+  let remaining = Math.min(MAX_ATTACHMENT_BYTES, Math.max(0, Math.floor((159 * 1024 * 1024 -
     new TextEncoder().encode(JSON.stringify(record)).length) * 0.7)));
   for (const ref of attachmentRefs(provider, pages)) {
     const item: SourceAttachment = { attachment_id: ref.id, data: null, media_type: ref.mime,
@@ -94,7 +101,7 @@ export async function attachOriginals(provider: ProviderId, record: SourceRecord
   // Freeze attachment identity/bytes into the fingerprint as well as the native outbox.
   const manifest = [];
   for (const item of attachments) {
-    const raw = item.data ? Uint8Array.from(atob(item.data), c => c.charCodeAt(0)) : null;
+    const raw = item.data ? decodeBase64(item.data) : null;
     const hash = raw ? [...new Uint8Array(await crypto.subtle.digest('SHA-256', raw))].map(v => v.toString(16).padStart(2, '0')).join('') : null;
     manifest.push({ id: item.attachment_id, status: item.status, sha256: hash });
   }

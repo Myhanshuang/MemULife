@@ -29,7 +29,7 @@ def decode_attachments(values):
             except (ValueError, binascii.Error):
                 raise AdapterError('source_attachment_invalid') from None
             size += len(data)
-            if not data or size > 8 * 1024 * 1024 or status != 'available':
+            if not data or size > 100 * 1024 * 1024 or status != 'available':
                 raise AdapterError('source_attachment_invalid')
         elif status == 'available':
             raise AdapterError('source_attachment_invalid')

@@ -23,7 +23,7 @@ _INPUT_OPTIONS = (
 )
 
 
-def decode_media(item: dict, max_bytes: int = 64 * 1024 * 1024) -> bytes:
+def decode_media(item: dict, max_bytes: int = 100 * 1024 * 1024) -> bytes:
     """Only caller-provided bytes, never server-side paths or arbitrary URLs."""
     if set(item) - {"data_base64", "mime_type", "filename"}:
         raise ValueError("Media accepts only data_base64, mime_type, filename")

@@ -1,7 +1,9 @@
-/** Loopback management page bridge. No administrator token or platform credential crosses it. */
+/** Granted management page bridge. The background verifies the exact server origin. */
 (() => {
-  if (window.top !== window || location.protocol !== 'http:' || !['localhost', '127.0.0.1'].includes(location.hostname) ||
-      !location.port || Number(location.port) < 1024 || !/^\/manage\/imports(?:\/|$)/.test(location.pathname)) return;
+  const loopback = location.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(location.hostname) &&
+    Boolean(location.port) && Number(location.port) >= 1024;
+  if (window.top !== window || (!loopback && location.protocol !== 'https:') ||
+      !/^\/manage\/imports(?:\/|$)/.test(location.pathname)) return;
   window.addEventListener('message', async event => {
     const request = event.data;
     if (event.source !== window || event.origin !== location.origin || request?.channel !== 'memu-connector-request' ||

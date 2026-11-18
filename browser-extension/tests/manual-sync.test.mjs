@@ -39,8 +39,8 @@ test('manual sync retries enabled failures without changing scopes, payloads or 
   const list = await store.get('lists', binding.id);
   await store.put('lists', { ...list, cursor: { tail: 'old-page' }, pages: 5 });
   await store.requestSync();
-  assert.equal((await store.get('lists', binding.id)).cursor, null);
-  assert.equal((await store.get('lists', binding.id)).pages, 0);
+  assert.deepEqual((await store.get('lists', binding.id)).cursor, { tail: 'old-page' });
+  assert.equal((await store.get('lists', binding.id)).pages, 5);
   const current = await store.get('bindings', binding.id);
   assert.equal(current.next_sync_at, 0);
   assert.equal(current.blocked_until, 0);
@@ -250,4 +250,27 @@ test('web source requests arriving behind a held lock are retained and leave oth
   assert.deepEqual(runs, [binding.id, 'second']);
   assert.equal((await store.get('bindings', 'unrelated')).blocked_until, later);
   await new Promise(resolve => setImmediate(resolve));
+});
+
+test('catalog traverses 225 conversations across provider-sized pages', async () => {
+  for (const size of [20, 50]) {
+    const store = await setup();
+    const seen = new Set();
+    const sync = new Synchronizer(store, {
+      assertBinding: async () => {},
+      list: async (_, cursor) => {
+        const start = cursor?.offset ?? 0;
+        const items = Array.from({length: Math.min(size, 225 - start)}, (_, i) => ({
+          id: String(start + i), locator: String(start + i), revision: null,
+        }));
+        return {items, cursor: start + items.length < 225 ? {offset: start + items.length} : null, warnings: []};
+      },
+    }, async message => {
+      if (message.method === 'catalog.offer') for (const item of message.params.items) seen.add(item.id);
+      return reply(message, message.method === 'selection.get' ? {job_id: null, scopes: []} : {accepted: true});
+    });
+    await sync.run(binding);
+    assert.equal(seen.size, 225);
+    store.db.close();
+  }
 });

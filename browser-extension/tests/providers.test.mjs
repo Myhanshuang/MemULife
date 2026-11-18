@@ -212,6 +212,7 @@ test('Perplexity details page past 100 entries without losing UUID or citations'
   assert.equal(record.object_id, 'stable-uuid');
   assert.match(record.text, /q104/);
   assert.match(record.raw, /citations/);
+  assert.match(record.text, /a104\n\n网站来源\n\[1\] https:\/\/example\.test/);
 });
 
 test('Grok discovers a bounded list and requires every requested response ID', async () => {

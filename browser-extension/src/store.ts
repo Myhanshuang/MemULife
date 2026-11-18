@@ -127,10 +127,9 @@ export class Store {
         await request(stores.bindings.put({ ...binding, next_sync_at: 0,
           blocked_until: waiting ? throttledUntil : 0, throttled_until: waiting ? throttledUntil : 0,
           status: waiting ? 'throttled' : 'queued', last_error: waiting ? 'throttled' : null }));
-        // The server catalog is transient. An explicit refresh must repopulate
-        // its first page even if the previous scan ended on an empty tail page.
+        // Resume an unfinished traversal; restarting it on every click hides older pages.
         const list = await request(stores.lists.get(binding.id));
-        if (list) await request(stores.lists.put({ ...list, cursor: null, phase: 'scan', pages: 0 }));
+        if (list && !list.cursor) await request(stores.lists.put({ ...list, phase: 'scan', pages: 0 }));
       }
     });
   }

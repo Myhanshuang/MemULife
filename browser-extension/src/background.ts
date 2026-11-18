@@ -2,18 +2,19 @@ import { AdapterError } from './types.ts';
 import type { Account, Binding, ProviderId } from './types.ts';
 import { ORIGINS, ReadClient } from './http.ts';
 import { PROVIDERS, Provider } from './providers.ts';
-import { browserBroker, chatgptFetch, deepseekFetch } from './broker.ts';
+import { browserBroker, chatgptFetch, deepseekFetch, perplexityFetch } from './broker.ts';
 import { Store } from './store.ts';
 import { Synchronizer } from './sync.ts';
 import { sourceSend, pairConnection, connectionStatus, localServiceURL, authorizeConnection } from './connection.ts';
 import { bindingId } from './wire.ts';
+import { configuredService, configureService, managementOrigin, registerManagement, servicePermission } from './service.ts';
 
 const ALARM = 'memulife-sync';
 let manualWakePending = false;
 const deferredSources = new Set<string>();
 const validProvider = (id: string): id is ProviderId => PROVIDERS.includes(id as ProviderId);
 const createProvider = (id: ProviderId) => new Provider(id,
-  new ReadClient(id, id === 'chatgpt' ? chatgptFetch : id === 'deepseek' ? deepseekFetch : fetch), browserBroker);
+  new ReadClient(id, id === 'chatgpt' ? chatgptFetch : id === 'deepseek' ? deepseekFetch : id === 'perplexity' ? perplexityFetch : fetch), browserBroker);
 
 async function ensureAlarm(): Promise<void> {
   await chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' });
@@ -73,15 +74,17 @@ async function permission(provider: ProviderId): Promise<void> {
   });
   if (!allowed || !await chrome.permissions.contains(wanted)) throw new AdapterError('permission_required');
 }
-function webOrigin(sender: chrome.runtime.MessageSender): string {
+async function webOrigin(sender: chrome.runtime.MessageSender): Promise<string> {
   if (sender.id !== chrome.runtime.id || sender.frameId !== 0 || sender.tab?.id === undefined) throw new AdapterError('scope_denied');
   const url = new URL(sender.url ?? '');
   if (!/^\/manage\/imports(?:\/|$)/.test(url.pathname)) throw new AdapterError('scope_denied');
-  return localServiceURL(url.origin);
+  return managementOrigin(url.origin);
 }
 async function progress(bindings: Set<string>): Promise<void> {
   const connections = await connectionStatus();
-  const tabs = await chrome.tabs.query({ url: ['http://127.0.0.1/*', 'http://localhost/*'] });
+  const service = await configuredService();
+  const tabs = await chrome.tabs.query({ url: [...new Set(['http://127.0.0.1/*', 'http://localhost/*',
+    ...(service ? [servicePermission(service)] : [])])] });
   await Promise.all(tabs.filter(tab => tab.id !== undefined && tab.url).map(tab => {
     const origin = new URL(tab.url!).origin;
     const source_ids = [...bindings].filter(id => connections[id]?.url === origin).map(id => connections[id].source_id);
@@ -92,13 +95,16 @@ async function progress(bindings: Set<string>): Promise<void> {
 async function handle(message: any, sender: chrome.runtime.MessageSender): Promise<any> {
   const ownPage = sender.id === chrome.runtime.id && sender.url?.startsWith(chrome.runtime.getURL('options.html'));
   if (!message || typeof message !== 'object') throw new AdapterError('invalid_request');
+  if (ownPage && message.type === 'configure-service' && typeof message.address === 'string') {
+    return { url: await configureService(message.address) };
+  }
   if (ownPage && message.type === 'permission-result') {
     const entry = grants.get(message.nonce);
     if (!entry || entry.tab !== sender.tab?.id) throw new AdapterError('scope_denied');
     entry.resolve(message.allowed === true); return { acknowledged: true };
   }
   if (message.type === 'web-connector') {
-    const url = webOrigin(sender), input = message.payload ?? {};
+    const url = await webOrigin(sender), input = message.payload ?? {};
     if (message.action === 'hello') return { extension_id: chrome.runtime.id, version: chrome.runtime.getManifest().version };
     if (message.action === 'probe' || message.action === 'connect') {
       if (!validProvider(input.provider) || typeof input.code !== 'string') throw new AdapterError('invalid_request');
@@ -195,9 +201,13 @@ async function handle(message: any, sender: chrome.runtime.MessageSender): Promi
   } finally { store.db.close(); }
 }
 
-chrome.runtime.onInstalled.addListener(() => { void ensureAlarm(); });
-chrome.runtime.onStartup.addListener(() => { void wake(); });
-chrome.action.onClicked.addListener(() => { void chrome.tabs.create({ url: 'http://127.0.0.1:5073/manage/imports' }); });
+chrome.runtime.onInstalled.addListener(() => { void ensureAlarm(); void registerManagement().catch(() => {}); });
+chrome.runtime.onStartup.addListener(() => { void registerManagement().catch(() => {}); void wake(); });
+chrome.action.onClicked.addListener(() => { void (async () => {
+  const url = await configuredService();
+  if (url) await chrome.tabs.create({ url: `${url}/manage/imports` });
+  else await chrome.runtime.openOptionsPage();
+})(); });
 chrome.alarms.onAlarm.addListener(alarm => { if (alarm.name === ALARM || alarm.name === 'memulife-dirty') void wake(); });
 chrome.runtime.onMessage.addListener((message, sender, reply) => {
   handle(message, sender).then(result => reply({ ok: true, result }), error => reply({ ok: false,

@@ -89,11 +89,42 @@ export async function deepseekFetch(input: RequestInfo | URL, init: RequestInit 
   });
 }
 
+/** Use the signed-in page for Perplexity reads; keep background access when no tab is open. */
+export async function perplexityFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+  const url = new URL(String(input));
+  const method = (init.method ?? 'GET').toUpperCase();
+  if (url.origin !== ORIGINS.perplexity || !(method === 'POST' && url.pathname === '/rest/thread/list_ask_threads' ||
+      method === 'GET' && /^\/rest\/thread\/[^/]+$/.test(url.pathname))) throw new AdapterError('scope_denied');
+  const [tab] = await chrome.tabs.query({url: ORIGINS.perplexity + '/*'});
+  if (tab?.id === undefined) return fetch(input, init);
+  const [result] = await chrome.scripting.executeScript({
+    target: {tabId: tab.id}, world: 'ISOLATED',
+    args: [{href: url.href, method, body: typeof init.body === 'string' ? init.body : null}],
+    func: async ({href, method, body}) => {
+      if (location.origin !== new URL(href).origin) return {error: 'account_changed'};
+      try {
+        const res = await fetch(href, {method, body, credentials: 'include', redirect: 'error',
+          headers: body ? {'Content-Type': 'application/json'} : {}, cache: 'no-store', signal: AbortSignal.timeout(20000)});
+        if (res.status >= 500) return {error: 'perplexity_http_' + res.status};
+        const raw = res.ok ? await res.text() : '';
+        if (raw.length > 16 * 1024 * 1024) return {error: 'response_too_large'};
+        return {status: res.status, raw, retry: res.headers.get('retry-after')};
+      } catch (error) {
+        return {error: error instanceof DOMException && error.name === 'TimeoutError' ? 'perplexity_timeout' : 'perplexity_page_request_failed'};
+      }
+    },
+  }).catch(() => { throw new AdapterError('perplexity_tab_unavailable'); });
+  const value = result?.result;
+  if (!value || !value.status) throw new AdapterError(value?.error || 'perplexity_tab_unavailable');
+  return new Response(value.status === 204 ? null : value.raw, {status: value.status,
+    headers: value.retry ? {'Retry-After': value.retry} : {}});
+}
+
 /** No cookie inventory, no general token-key scanning, no credential persistence. */
 export const browserBroker: AuthBroker = {
   async chatgptAttachment(accessToken, workspaceId, fileId, maxBytes, conversationId) {
     if (!/^file[-_][A-Za-z0-9_-]{1,200}$/.test(fileId) || !Number.isSafeInteger(maxBytes) ||
-        maxBytes <= 0 || maxBytes > 8 * 1024 * 1024 || !/^[A-Za-z0-9_-]{1,128}$/.test(conversationId)) throw new AdapterError('attachment_reference_invalid');
+        maxBytes <= 0 || maxBytes > 100 * 1024 * 1024 || !/^[A-Za-z0-9_-]{1,128}$/.test(conversationId)) throw new AdapterError('attachment_reference_invalid');
     const tabs = await chrome.tabs.query({ url: `${ORIGINS.chatgpt}/*` });
     const tab = tabs.find(value => value.id !== undefined);
     if (tab?.id === undefined) throw new AdapterError('dormant_browser');
@@ -126,7 +157,7 @@ export const browserBroker: AuthBroker = {
           stage = 'download_bytes';
           const sameOrigin = url.origin === location.origin;
           const file = await fetch(url.href, { method: 'GET', credentials: sameOrigin ? 'include' : 'omit', redirect: 'error',
-            cache: 'no-store', signal: AbortSignal.timeout(30_000), referrerPolicy: 'no-referrer' });
+            cache: 'no-store', signal: AbortSignal.timeout(180_000), referrerPolicy: 'no-referrer' });
           if (!file.ok) return failure(status(file.status), file.status);
           const mime = (file.headers.get('content-type') ?? 'application/octet-stream').split(';')[0];
           if (mime === 'text/html') { await file.body?.cancel(); return failure('attachment_unexpected_response'); }

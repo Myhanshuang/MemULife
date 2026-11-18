@@ -95,18 +95,27 @@ export const errorMessage = code => {
 
 export function createClient(getToken) {
   return async (path, method = 'GET', body, signal) => {
+    const token = getToken();
+    if (!token || /[^!-~]/.test(token)) {
+      throw new Error('管理密钥格式不正确。请只填写 token 值，或选择管理凭据 JSON 文件。');
+    }
     let response, value;
     try {
       response = await fetch(`/v1/manage/${path}`, { method, signal, cache: 'no-store',
-        credentials: 'same-origin', headers: { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' },
+        credentials: 'same-origin', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+    } catch (error) {
+      if (error.name === 'AbortError') throw error;
+      throw new Error(`管理请求未收到响应（${method} ${path.split('?')[0]}）。`);
+    }
+    try {
       value = await response.json();
     } catch (error) {
       if (error.name === 'AbortError') throw error;
-      throw new Error('连接未完成，请检查服务后重试。');
+      throw new Error(`管理接口响应不完整或不是 JSON（HTTP ${response.status}，${method} ${path.split('?')[0]}）。`);
     }
     if (!response.ok) {
-      const error = new Error(errorMessage(value.code));
+      const error = new Error(response.status === 401 ? '管理登录凭据无效，请重新登录。' : errorMessage(value.code));
       error.code = value.code; error.result = value.result; throw error;
     }
     if (method === 'POST' && (path === 'imports/jobs' || path === 'imports/jobs/batch' || (path.endsWith('/preview') && value.status === 'pending' && !body?.cursor)) && body?.source_id !== null) {

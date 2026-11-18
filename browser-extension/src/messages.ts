@@ -1,3 +1,4 @@
+import { perplexityAnswer, perplexityTime } from './perplexity.ts';
 /** Bounded, canonical message views. Original response frames never enter this format. */
 import { AdapterError } from './types.ts';
 import type { DetailPage, ProviderId, SourceRecord, Summary } from './types.ts';
@@ -106,14 +107,13 @@ export async function projectMessages(provider: ProviderId, item: Summary, pages
         object(entry);
         const id = entry.uuid ?? entry.id ?? entry.entry_uuid;
         const path = `${pageIndex}/entries/${index}`;
-        if (typeof entry.query_str === 'string') await add(id == null ? null : `${nativeId(id)}:user`, `${path}/user`, 'user', entry.query_str, entry.query_datetime ?? entry.created_at);
+        if (typeof entry.query_str === 'string') await add(id == null ? null : `${nativeId(id)}:user`, `${path}/user`, 'user', entry.query_str, perplexityTime(entry.query_datetime, entry.created_datetime, entry.created_at));
         const answers: string[] = [];
         for (const block of array(entry.blocks ?? [])) {
-          const markdown = block.markdown_block;
-          if (typeof markdown?.answer === 'string') answers.push(markdown.answer);
-          else if (Array.isArray(markdown?.chunks)) answers.push(markdown.chunks.filter((v: unknown) => typeof v === 'string').join(''));
+          const answer = perplexityAnswer(block.markdown_block);
+          if (answer) answers.push(answer);
         }
-        await add(id == null ? null : `${nativeId(id)}:assistant`, `${path}/assistant`, 'assistant', answers.join('\n\n'), entry.answer_datetime);
+        await add(id == null ? null : `${nativeId(id)}:assistant`, `${path}/assistant`, 'assistant', answers.join('\n\n'), perplexityTime(entry.answer_datetime, entry.answer_created_at, entry.answer_timestamp));
       }
     } else if (provider === 'deepseek') {
       const outer = object(data), envelope = object(outer.data), body = object(envelope.biz_data);

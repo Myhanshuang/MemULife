@@ -2,4 +2,7 @@
 .connector-home h1 { font-size: 24px; margin: 0 0 8px; }
 .connector-home .setup-description { margin-bottom: 28px; }
 .connector-link { color: var(--color-accent); font-weight: 600; white-space: nowrap; }
+#server-settings { display: grid; gap: 12px; margin-bottom: 28px; }
+#server-settings[hidden] { display: none; }
+#server-settings input { width: 100%; min-width: 0; }
 @media(max-width: 600px) { .connector-home { margin: 24px auto; padding: 0 16px; } .connector-home h1 { font-size: 21px; } }

@@ -2,17 +2,13 @@ import { AdapterError } from './types.ts';
 import type { Binding, JsonObject } from './types.ts';
 import { bindingId } from './wire.ts';
 import { nativeSend } from './native.ts';
+import { serviceURL } from './service.ts';
 
 type Connection = { url: string; token: string; source_id: string };
 const KEY = 'memu-web-connections';
 
 export function localServiceURL(value: string): string {
-  const url = new URL(value);
-  if (url.protocol !== 'http:' || !['127.0.0.1', 'localhost'].includes(url.hostname) || url.username || url.password ||
-      (url.pathname !== '/' && url.pathname !== '') || url.search || url.hash || !url.port || Number(url.port) < 1024) {
-    throw new AdapterError('web_address_invalid');
-  }
-  return url.origin;
+  return serviceURL(value);
 }
 
 async function connections(): Promise<Record<string, Connection>> {

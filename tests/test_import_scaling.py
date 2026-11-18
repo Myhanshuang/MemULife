@@ -111,6 +111,26 @@ def test_parallel_jobs_never_reserve_the_same_cursor_twice():
     assert sorted(selected) == ['a', 'b'] and not service.inflight
 
 
+def test_cached_reader_does_not_starve_another_source_or_processing_receipt():
+    service = object.__new__(AcquisitionService)
+    service.lock, service.changed = threading.RLock(), threading.Event()
+    service.inflight, service.readers = set(), {'large': object()}
+    service.state = {'sources': {'s': {'adapter_id': 'ai.local-logs'}}, 'jobs': {
+        key: {'job_id': key, 'source_id': 's', 'state': 'queued',
+              'updated_at': updated, 'receipts': {}}
+        for key, updated in [('large', '02'), ('small', '01'), ('receipt', '00')]}}
+    service.state['jobs']['receipt'].update(state='processing', delivery_complete=True)
+    selected = []
+    def process(key):
+        selected.append(key)
+        service.state['jobs'][key]['updated_at'] = '03'
+        return True
+    service._run_job = process
+    for _ in range(3):
+        assert service.run_once()
+    assert selected == ['receipt', 'small', 'large']
+
+
 def test_postgres_control_migration_and_receipt_update_are_local(database, tmp_path):
     outbox = tmp_path / 'outbox'; outbox.mkdir()
     original = {'version': 1, 'sources': {}, 'subscriptions': {}, 'jobs': {'j': {

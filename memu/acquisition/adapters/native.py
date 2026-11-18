@@ -11,7 +11,7 @@ from ...persistence import encoded
 from types import SimpleNamespace
 
 MAX_MESSAGE = 1024 * 1024
-MAX_CAPTURE = 16 * 1024 * 1024
+MAX_CAPTURE = 160 * 1024 * 1024
 CHUNK_BYTES = 192 * 1024
 MAX_TRANSFERS_BYTES = 64 * 1024 * 1024
 

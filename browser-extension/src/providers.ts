@@ -1,3 +1,4 @@
+import { perplexityAnswer, perplexityTime } from './perplexity.ts';
 import { projectMessages } from './messages.ts';
 import { AdapterError } from './types.ts';
 import type { Account, Binding, DetailPage, JsonObject, ListPage, ProviderId, SourceRecord, Summary } from './types.ts';
@@ -235,7 +236,8 @@ export class Provider {
         body: JSON.stringify({ limit: 20, ascending: false, offset, search_term: '' }),
       });
       return offsetPage(array(result.data).map(item => summary(item, item.context_uuid ?? item.uuid, item.last_query_datetime, item.slug, {
-        provider: this.id, title: catalogTitle(item.title), updated_at: catalogTime(item.last_query_datetime),
+        provider: this.id, title: catalogTitle(item.title), created_at: perplexityTime(item.created_at, item.created_datetime),
+        updated_at: perplexityTime(item.last_query_datetime, item.updated_at, item.updated_datetime),
       })), offset, 20, ['principal_session_bound', 'detail_pagination_fixture_only']);
     }
     if (this.id === 'deepseek') {
@@ -359,9 +361,8 @@ export function project(provider: ProviderId, item: Summary, pages: DetailPage[]
       for (const entry of array(data.entries)) {
         if (typeof entry.query_str === 'string') texts.push(entry.query_str);
         for (const block of array(entry.blocks ?? [])) {
-          const markdown = block.markdown_block;
-          if (typeof markdown?.answer === 'string') texts.push(markdown.answer);
-          else if (Array.isArray(markdown?.chunks)) texts.push(markdown.chunks.filter((value: any) => typeof value === 'string').join(''));
+          const answer = perplexityAnswer(block.markdown_block);
+          if (answer) texts.push(answer);
         }
       }
     } else if (provider === 'deepseek') {
